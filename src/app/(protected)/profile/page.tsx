@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/features/auth/session.server";
 import { routes } from "@/lib/routes";
 
+import styles from "./ProfilePage.module.css";
+
 export default async function ProfilePage() {
   const session = await getCurrentSession();
 
@@ -11,19 +13,19 @@ export default async function ProfilePage() {
   }
 
   return (
-    <section className="profile-page">
-      <div className="profile-card">
+    <section className={styles.page}>
+      <div className={styles.card}>
         <h1>Profile</h1>
         <dl>
-          <div className="profile-row">
+          <div className={styles.row}>
             <dt>LINE name</dt>
             <dd>{session.user.displayName ?? "-"}</dd>
           </div>
-          <div className="profile-row">
+          <div className={styles.row}>
             <dt>Friend status</dt>
             <dd>{session.user.friendFlag ? "Added" : "Not added"}</dd>
           </div>
-          <div className="profile-row">
+          <div className={styles.row}>
             <dt>Last login</dt>
             <dd>{session.user.lastLoginAt?.toLocaleString("th-TH") ?? "-"}</dd>
           </div>

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 
+import pageStyles from "@/app/(public)/public.module.css";
 import { LineLoginButton } from "@/components/auth/LineLoginButton";
+import panelStyles from "@/components/auth/AuthPanel.module.css";
 import { getCurrentSession } from "@/features/auth/session.server";
 import { routes } from "@/lib/routes";
 
@@ -16,8 +18,8 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="center-page">
-      <section className="panel">
+    <main className={pageStyles.centerPage}>
+      <section className={panelStyles.panel}>
         <h1>Health Chatbot</h1>
         <p>
           เข้าสู่ระบบด้วย LINE และเพิ่มเพื่อนบัญชีทางการก่อนใช้งานแชทบอทสุขภาพบนเว็บนี้

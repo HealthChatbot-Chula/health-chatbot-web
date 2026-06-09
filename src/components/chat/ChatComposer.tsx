@@ -3,6 +3,10 @@
 import { Send } from "lucide-react";
 import { FormEvent, KeyboardEvent, useState } from "react";
 
+import buttonStyles from "@/components/ui/Button.module.css";
+
+import styles from "./ChatComposer.module.css";
+
 export function ChatComposer({
   disabled,
   onSend
@@ -35,7 +39,7 @@ export function ChatComposer({
   }
 
   return (
-    <form className="composer" onSubmit={handleSubmit}>
+    <form className={styles.composer} onSubmit={handleSubmit}>
       <textarea
         value={message}
         onChange={(event) => setMessage(event.target.value)}
@@ -43,7 +47,7 @@ export function ChatComposer({
         placeholder="พิมพ์คำถามสุขภาพของคุณ..."
         disabled={disabled}
       />
-      <button className="icon-button" type="submit" disabled={disabled || !message.trim()} title="Send">
+      <button className={buttonStyles.iconButton} type="submit" disabled={disabled || !message.trim()} title="Send">
         <Send size={18} aria-hidden="true" />
       </button>
     </form>

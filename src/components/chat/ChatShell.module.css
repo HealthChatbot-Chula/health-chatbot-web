@@ -1,0 +1,168 @@
+.shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  height: calc(100dvh - 60px);
+  overflow: hidden;
+  transition: grid-template-columns 180ms ease;
+}
+
+.sidebarCollapsed {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.viewportReady {
+  --sidebar-viewport-ready: 1;
+}
+
+.sidebarPane {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebarCollapsed .sidebarPane {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.rail {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.sidebarOpen .rail {
+  display: none;
+}
+
+.railButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+}
+
+.railButton:hover {
+  background: var(--surface-muted);
+  border-color: var(--border);
+}
+
+.main {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.backdrop {
+  display: none;
+}
+
+.loadingList {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 22px;
+}
+
+.statusText {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.errorText {
+  color: var(--danger);
+  font-size: 14px;
+  padding: 0 18px 10px;
+}
+
+@media (max-width: 820px) {
+  .shell {
+    grid-template-columns: 1fr;
+    height: calc(100dvh - 84px);
+    min-height: 0;
+  }
+
+  .sidebarOpen,
+  .sidebarCollapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebarCollapsed .sidebarPane {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .sidebarPane {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(320px, 86vw);
+    max-width: 100%;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    transform: translateX(-100%);
+    transition:
+      transform 180ms ease,
+      visibility 180ms ease;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .rail {
+    position: absolute;
+    left: 10px;
+    bottom: 84px;
+    z-index: 8;
+    grid-column: 1;
+    width: auto;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .railButton {
+    width: 38px;
+    height: 38px;
+  }
+
+  .viewportReady.sidebarOpen .sidebarPane {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: block;
+    border: 0;
+    padding: 0;
+    background: rgba(17, 45, 78, 0.28);
+  }
+
+  .main {
+    grid-column: 1;
+    min-height: 0;
+  }
+}

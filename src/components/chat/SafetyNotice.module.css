@@ -1,0 +1,8 @@
+.notice {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 13px;
+  line-height: 1.5;
+}

@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import type { ChatMessage } from "@/features/chat/chat.types";
 
+import styles from "./MessageList.module.css";
+
 export function MessageList({
   messages,
   isSending
@@ -20,8 +22,8 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="message-list">
-        <div className="empty-chat">
+      <div className={styles.list}>
+        <div className={styles.empty}>
           <div>
             <h2>เริ่มคุยเรื่องผลตรวจสุขภาพได้เลย</h2>
             <p>เช่น LDL, HbA1c, ความดัน, ค่าไต หรือคำถามสุขภาพเบื้องต้น</p>
@@ -32,14 +34,12 @@ export function MessageList({
   }
 
   return (
-    <div className="message-list">
+    <div className={styles.list}>
       {messages.map((message, index) => (
         <MessageBubble key={message.id ?? `${message.role}-${index}`} message={message} />
       ))}
       {isSending ? (
-        <div className="message-row assistant">
-          <div className="message-bubble">กำลังประมวลผล...</div>
-        </div>
+        <MessageBubble message={{ role: "assistant", content: "กำลังประมวลผล..." }} />
       ) : null}
       <div ref={endRef} />
     </div>

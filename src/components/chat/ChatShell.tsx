@@ -1,5 +1,6 @@
 "use client";
 
+import { PanelLeftOpen, SquarePen } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
@@ -7,6 +8,8 @@ import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { MessageList } from "@/components/chat/MessageList";
 import { SafetyNotice } from "@/components/chat/SafetyNotice";
 import type { ChatMessage, ConversationSummary } from "@/features/chat/chat.types";
+
+import styles from "./ChatShell.module.css";
 
 type ConversationResponse = {
   id: string;
@@ -26,6 +29,8 @@ export function ChatShell() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isViewportReady, setIsViewportReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -70,10 +75,31 @@ export function ChatShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 820px)");
+
+    function syncSidebarWithViewport() {
+      setIsSidebarOpen(!mediaQuery.matches);
+      setIsViewportReady(true);
+    }
+
+    syncSidebarWithViewport();
+    mediaQuery.addEventListener("change", syncSidebarWithViewport);
+
+    return () => mediaQuery.removeEventListener("change", syncSidebarWithViewport);
+  }, []);
+
+  function closeSidebarOnMobile() {
+    if (window.matchMedia("(max-width: 820px)").matches) {
+      setIsSidebarOpen(false);
+    }
+  }
+
   function handleNewConversation() {
     setActiveConversationId(null);
     setMessages([]);
     setError(null);
+    closeSidebarOnMobile();
   }
 
   async function handleSend(message: string) {
@@ -114,26 +140,66 @@ export function ChatShell() {
     }
   }
 
+  function handleSelectConversation(conversationId: string) {
+    void loadConversation(conversationId).catch((loadError) => setError(loadError.message));
+    closeSidebarOnMobile();
+  }
+
   return (
-    <div className="chat-shell">
-      <ConversationSidebar
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        onSelectConversation={(conversationId) => {
-          void loadConversation(conversationId).catch((loadError) => setError(loadError.message));
-        }}
-        onNewConversation={handleNewConversation}
-      />
-      <section className="chat-main">
+    <div
+      className={`${styles.shell} ${isViewportReady ? styles.viewportReady : ""} ${
+        isSidebarOpen ? styles.sidebarOpen : styles.sidebarCollapsed
+      }`}
+    >
+      {isViewportReady && isSidebarOpen ? (
+        <button
+          aria-label="Close conversations"
+          className={styles.backdrop}
+          onClick={() => setIsSidebarOpen(false)}
+          type="button"
+        />
+      ) : null}
+      <div className={styles.sidebarPane}>
+        <ConversationSidebar
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
+          onNewConversation={handleNewConversation}
+          onCloseSidebar={() => setIsSidebarOpen(false)}
+        />
+      </div>
+      {!isSidebarOpen ? (
+        <nav className={styles.rail} aria-label="Chat tools">
+          <button
+            aria-label="Show conversations"
+            className={styles.railButton}
+            onClick={() => setIsSidebarOpen(true)}
+            title="Show conversations"
+            type="button"
+          >
+            <PanelLeftOpen size={20} aria-hidden="true" />
+          </button>
+          <button
+            aria-label="New chat"
+            className={styles.railButton}
+            onClick={handleNewConversation}
+            title="New chat"
+            type="button"
+          >
+            <SquarePen size={20} aria-hidden="true" />
+          </button>
+        </nav>
+      ) : null}
+      <section className={styles.main}>
         <SafetyNotice />
         {isLoading ? (
-          <div className="message-list">
-            <p className="status-text">Loading conversations...</p>
+          <div className={styles.loadingList}>
+            <p className={styles.statusText}>Loading conversations...</p>
           </div>
         ) : (
           <MessageList messages={messages} isSending={isSending} />
         )}
-        {error ? <div className="error-text" style={{ padding: "0 18px 10px" }}>{error}</div> : null}
+        {error ? <div className={styles.errorText}>{error}</div> : null}
         <ChatComposer disabled={isSending || isLoading} onSend={handleSend} />
       </section>
     </div>
