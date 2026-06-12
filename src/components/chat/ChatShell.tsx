@@ -197,7 +197,7 @@ export function ChatShell() {
             <p className={styles.statusText}>Loading conversations...</p>
           </div>
         ) : (
-          <MessageList messages={messages} isSending={isSending} />
+          <MessageList messages={messages} isSending={isSending} onQuickReply={handleSend} />
         )}
         {error ? <div className={styles.errorText}>{error}</div> : null}
         <ChatComposer disabled={isSending || isLoading} onSend={handleSend} />

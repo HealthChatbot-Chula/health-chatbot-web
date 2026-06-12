@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { normalizeBaseUrl } from "@/lib/http";
-import type { ChatMessage } from "@/features/chat/chat.types";
+import type { ChatMessage, QuickReplyOption } from "@/features/chat/chat.types";
 
 type CreateCompletionInput = {
   conversationId: string;
@@ -13,6 +13,10 @@ type CompletionResponse = {
   choices?: Array<{
     message?: {
       content?: string;
+      metadata?: {
+        choices?: QuickReplyOption[];
+        pending_slot?: string;
+      };
     };
   }>;
 };
@@ -52,11 +56,23 @@ export async function createHealthChatCompletion(input: CreateCompletionInput) {
   }
 
   const data = (await response.json()) as CompletionResponse;
-  const content = data.choices?.[0]?.message?.content?.trim();
+  const message = data.choices?.[0]?.message;
+  const content = message?.content?.trim();
 
   if (!content) {
     throw new AppError("Health backend returned an empty response", 502);
   }
 
-  return content;
+  return {
+    content,
+    quickReplies: Array.isArray(message?.metadata?.choices)
+      ? message.metadata.choices.filter(
+          (choice) =>
+            typeof choice?.label === "string" &&
+            choice.label.length > 0 &&
+            typeof choice?.value === "string" &&
+            choice.value.length > 0
+        )
+      : undefined
+  };
 }

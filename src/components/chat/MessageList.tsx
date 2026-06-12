@@ -3,18 +3,22 @@
 import { useEffect, useRef } from "react";
 
 import { MessageBubble } from "@/components/chat/MessageBubble";
+import { getQuickReplySet, QuickReplyChoices } from "@/components/chat/QuickReplyChoices";
 import type { ChatMessage } from "@/features/chat/chat.types";
 
 import styles from "./MessageList.module.css";
 
 export function MessageList({
   messages,
-  isSending
+  isSending,
+  onQuickReply
 }: {
   messages: ChatMessage[];
   isSending: boolean;
+  onQuickReply: (value: string) => Promise<void>;
 }) {
   const endRef = useRef<HTMLDivElement | null>(null);
+  const quickReplies = isSending ? null : getQuickReplySet(messages);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -38,6 +42,9 @@ export function MessageList({
       {messages.map((message, index) => (
         <MessageBubble key={message.id ?? `${message.role}-${index}`} message={message} />
       ))}
+      {quickReplies ? (
+        <QuickReplyChoices choices={quickReplies} disabled={isSending} onSelect={onQuickReply} />
+      ) : null}
       {isSending ? (
         <MessageBubble message={{ role: "assistant", content: "กำลังประมวลผล..." }} />
       ) : null}

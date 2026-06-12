@@ -90,7 +90,7 @@ export async function sendMessageToConversation(input: {
   });
 
   const history = await listConversationMessages(conversation.id);
-  const assistantContent = await createHealthChatCompletion({
+  const assistantResult = await createHealthChatCompletion({
     conversationId: conversation.id,
     userId: input.userId,
     messages: history.map((message) => ({
@@ -104,7 +104,7 @@ export async function sendMessageToConversation(input: {
   const assistantMessage = await createConversationMessage({
     conversationId: conversation.id,
     role: "assistant",
-    content: assistantContent
+    content: assistantResult.content
   });
 
   const updatedConversation = await touchConversation(
@@ -118,6 +118,12 @@ export async function sendMessageToConversation(input: {
       title: updatedConversation.title,
       updatedAt: updatedConversation.updatedAt.toISOString()
     },
-    messages: [serializeMessage(userMessage), serializeMessage(assistantMessage)]
+    messages: [
+      serializeMessage(userMessage),
+      {
+        ...serializeMessage(assistantMessage),
+        quickReplies: assistantResult.quickReplies
+      }
+    ]
   };
 }
