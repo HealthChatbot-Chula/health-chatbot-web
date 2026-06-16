@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {}
+  experimental: {},
+  turbopack: {},
+  allowedDevOrigins: ["thieving-reboot-detached.ngrok-free.dev"],
 };
 
 export default nextConfig;

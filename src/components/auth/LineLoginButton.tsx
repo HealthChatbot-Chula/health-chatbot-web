@@ -1,5 +1,6 @@
-import { MessageCircle } from "lucide-react";
+'use client';
 
+import { MessageCircle } from "lucide-react";
 import buttonStyles from "@/components/ui/Button.module.css";
 import { routes } from "@/lib/routes";
 

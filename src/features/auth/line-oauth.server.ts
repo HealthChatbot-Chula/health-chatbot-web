@@ -52,24 +52,26 @@ function timingSafeEqualString(left: string, right: string) {
 export async function createLineAuthorizationUrl() {
   const state = randomUrlToken();
   const nonce = randomUrlToken();
-  const cookieStore = await cookies();
+  // const cookieStore = await cookies();
 
-  const cookieOptions = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: OAUTH_COOKIE_MAX_AGE_SECONDS
-  };
+  const combinedState = `${state}.${nonce}`;
 
-  cookieStore.set(STATE_COOKIE, state, cookieOptions);
-  cookieStore.set(NONCE_COOKIE, nonce, cookieOptions);
+  // const cookieOptions = {
+  //   httpOnly: true,
+  //   secure: true,
+  //   sameSite: "none" as const,
+  //   path: "/",
+  //   maxAge: OAUTH_COOKIE_MAX_AGE_SECONDS
+  // };
+
+  // cookieStore.set(STATE_COOKIE, state, cookieOptions);
+  // cookieStore.set(NONCE_COOKIE, nonce, cookieOptions);
 
   const params = new URLSearchParams({
     response_type: "code",
     client_id: env.LINE_CHANNEL_ID,
     redirect_uri: redirectUri(),
-    state,
+    state: combinedState,
     scope: "profile openid",
     nonce,
     bot_prompt: env.LINE_BOT_PROMPT
@@ -79,22 +81,19 @@ export async function createLineAuthorizationUrl() {
 }
 
 export async function consumeAndVerifyLineState(returnedState: string | null) {
-  const cookieStore = await cookies();
-  const storedState = cookieStore.get(STATE_COOKIE)?.value;
-  const storedNonce = cookieStore.get(NONCE_COOKIE)?.value;
+  console.log("returnedState:", returnedState);
 
-  cookieStore.delete(STATE_COOKIE);
-  cookieStore.delete(NONCE_COOKIE);
-
-  if (!returnedState || !storedState || !storedNonce) {
+  if (!returnedState) {
     throw new AppError("LINE login state is missing", 400);
   }
 
-  if (!timingSafeEqualString(returnedState, storedState)) {
+  const dotIndex = returnedState.lastIndexOf(".");
+  if (dotIndex === -1) {
     throw new AppError("LINE login state is invalid", 400);
   }
 
-  return storedNonce;
+  const nonce = returnedState.substring(dotIndex + 1);
+  return nonce;
 }
 
 export async function exchangeLineCodeForToken(code: string) {
