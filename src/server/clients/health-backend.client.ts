@@ -1,12 +1,13 @@
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { normalizeBaseUrl } from "@/lib/http";
-import type { ChatMessage, QuickReplyOption } from "@/features/chat/chat.types";
+import type { ChatMessage, HealthState, QuickReplyOption } from "@/features/chat/chat.types";
 
 type CreateCompletionInput = {
   conversationId: string;
   userId: string;
   messages: ChatMessage[];
+  healthState?: HealthState;
 };
 
 type CompletionResponse = {
@@ -15,6 +16,7 @@ type CompletionResponse = {
       content?: string;
       metadata?: {
         choices?: QuickReplyOption[];
+        health_state?: HealthState;
         pending_slot?: string;
       };
     };
@@ -43,6 +45,7 @@ export async function createHealthChatCompletion(input: CreateCompletionInput) {
       })),
       user: input.userId,
       conversation_id: input.conversationId,
+      health_state: input.healthState,
       stream: false
     })
   });
@@ -65,6 +68,7 @@ export async function createHealthChatCompletion(input: CreateCompletionInput) {
 
   return {
     content,
+    healthState: message?.metadata?.health_state,
     quickReplies: Array.isArray(message?.metadata?.choices)
       ? message.metadata.choices.filter(
           (choice) =>

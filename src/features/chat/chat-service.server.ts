@@ -1,14 +1,18 @@
+import { Prisma } from "@prisma/client";
+
 import { AppError } from "@/lib/errors";
 import { createHealthChatCompletion } from "@/server/clients/health-backend.client";
 import {
   createConversationMessage,
   createUserConversation,
+  getConversationHealthState,
   getUserConversation,
   listConversationMessages,
   listUserConversations,
-  touchConversation
+  touchConversation,
+  upsertConversationHealthState
 } from "@/server/repositories/conversation.repository";
-import type { ChatMessage } from "@/features/chat/chat.types";
+import type { ChatMessage, HealthState, QuickReplyOption } from "@/features/chat/chat.types";
 
 function titleFromMessage(message: string) {
   const compact = message.replace(/\s+/g, " ").trim();
@@ -24,13 +28,46 @@ function serializeMessage(message: {
   role: string;
   content: string;
   createdAt: Date;
+  metadata?: unknown;
 }): ChatMessage {
+  const metadata = message.metadata;
+  const quickReplies =
+    metadata &&
+    typeof metadata === "object" &&
+    "quickReplies" in metadata &&
+    Array.isArray(metadata.quickReplies)
+      ? metadata.quickReplies.filter(isQuickReplyOption)
+      : undefined;
+
   return {
     id: message.id,
     role: message.role as ChatMessage["role"],
     content: message.content,
-    createdAt: message.createdAt.toISOString()
+    createdAt: message.createdAt.toISOString(),
+    quickReplies
   };
+}
+
+function isQuickReplyOption(value: unknown): value is QuickReplyOption {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.label === "string" &&
+    candidate.label.length > 0 &&
+    typeof candidate.value === "string" &&
+    candidate.value.length > 0
+  );
+}
+
+function isHealthState(value: unknown): value is HealthState {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function toPrismaJsonObject(value: HealthState): Prisma.InputJsonObject {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
 }
 
 export async function getConversationForUser(userId: string, conversationId: string) {
@@ -90,9 +127,11 @@ export async function sendMessageToConversation(input: {
   });
 
   const history = await listConversationMessages(conversation.id);
+  const savedHealthState = await getConversationHealthState(conversation.id);
   const assistantResult = await createHealthChatCompletion({
     conversationId: conversation.id,
     userId: input.userId,
+    healthState: isHealthState(savedHealthState?.state) ? savedHealthState.state : undefined,
     messages: history.map((message) => ({
       id: message.id,
       role: message.role as ChatMessage["role"],
@@ -104,8 +143,26 @@ export async function sendMessageToConversation(input: {
   const assistantMessage = await createConversationMessage({
     conversationId: conversation.id,
     role: "assistant",
-    content: assistantResult.content
+    content: assistantResult.content,
+    metadata: assistantResult.quickReplies
+      ? { quickReplies: assistantResult.quickReplies }
+      : undefined
   });
+
+  if (assistantResult.healthState) {
+    await upsertConversationHealthState({
+      conversationId: conversation.id,
+      state: toPrismaJsonObject(assistantResult.healthState),
+      pendingSlot:
+        typeof assistantResult.healthState.pending_slot === "string"
+          ? assistantResult.healthState.pending_slot
+          : null,
+      summary:
+        typeof assistantResult.healthState.summary === "string"
+          ? assistantResult.healthState.summary
+          : null
+    });
+  }
 
   const updatedConversation = await touchConversation(
     conversation.id,

@@ -19,6 +19,8 @@ model User {
 
   sessions      Session[]
   conversations Conversation[]
+  patientProfile PatientProfile?
+  labReports     LabReport[]
 }
 
 model Session {
@@ -43,6 +45,8 @@ model Conversation {
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages Message[]
+  healthState ConversationHealthState?
+  labReports  LabReport[]
 
   @@index([userId, updatedAt])
 }
@@ -52,9 +56,74 @@ model Message {
   conversationId String
   role           String
   content        String
+  metadata       Json?
   createdAt      DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sourceLabReports LabReport[] @relation("LabReportSourceMessage")
 
   @@index([conversationId, createdAt])
+}
+
+model PatientProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  sex                String?
+  birthDate          DateTime?
+  underlyingDiseases Json?
+  currentMedications Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ConversationHealthState {
+  id                  String   @id @default(cuid())
+  conversationId      String   @unique
+  pendingSlot         String?
+  activeLabReportId   String?
+  state               Json?
+  profileSnapshot     Json?
+  summary             String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model LabReport {
+  id              String   @id @default(cuid())
+  userId          String
+  conversationId  String?
+  sourceMessageId String?
+  measuredAt      DateTime?
+  reportedAt      DateTime @default(now())
+  fastingStatus   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation  Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  sourceMessage Message?      @relation("LabReportSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  results       LabResult[]
+
+  @@index([userId, reportedAt])
+  @@index([conversationId, reportedAt])
+}
+
+model LabResult {
+  id             String   @id @default(cuid())
+  labReportId    String
+  name           String
+  value          Float
+  unit           String?
+  referenceRange String?
+  flag           String?
+  createdAt      DateTime @default(now())
+
+  labReport LabReport @relation(fields: [labReportId], references: [id], onDelete: Cascade)
+
+  @@index([labReportId])
+  @@index([name])
 }

@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { MessageList } from "@/components/chat/MessageList";
-import { SafetyNotice } from "@/components/chat/SafetyNotice";
 import type { ChatMessage, ConversationSummary } from "@/features/chat/chat.types";
 
 import styles from "./ChatShell.module.css";
@@ -191,7 +190,6 @@ export function ChatShell() {
         </nav>
       ) : null}
       <section className={styles.main}>
-        <SafetyNotice />
         {isLoading ? (
           <div className={styles.loadingList}>
             <p className={styles.statusText}>Loading conversations...</p>

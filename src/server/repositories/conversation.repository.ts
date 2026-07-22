@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/server/db";
 
 export async function listUserConversations(userId: string) {
@@ -20,6 +22,7 @@ export async function getUserConversation(userId: string, conversationId: string
       userId
     },
     include: {
+      healthState: true,
       messages: {
         orderBy: { createdAt: "asc" }
       }
@@ -40,6 +43,7 @@ export async function createConversationMessage(input: {
   conversationId: string;
   role: "user" | "assistant" | "system";
   content: string;
+  metadata?: Prisma.InputJsonValue;
 }) {
   return prisma.message.create({
     data: input
@@ -59,6 +63,34 @@ export async function touchConversation(conversationId: string, title?: string) 
     data: {
       ...(title ? { title } : {}),
       updatedAt: new Date()
+    }
+  });
+}
+
+export async function getConversationHealthState(conversationId: string) {
+  return prisma.conversationHealthState.findUnique({
+    where: { conversationId }
+  });
+}
+
+export async function upsertConversationHealthState(input: {
+  conversationId: string;
+  state: Prisma.InputJsonValue;
+  pendingSlot?: string | null;
+  summary?: string | null;
+}) {
+  return prisma.conversationHealthState.upsert({
+    where: { conversationId: input.conversationId },
+    create: {
+      conversationId: input.conversationId,
+      state: input.state,
+      pendingSlot: input.pendingSlot ?? null,
+      summary: input.summary ?? null
+    },
+    update: {
+      state: input.state,
+      pendingSlot: input.pendingSlot ?? null,
+      summary: input.summary ?? null
     }
   });
 }
