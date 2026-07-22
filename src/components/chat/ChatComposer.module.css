@@ -1,6 +1,6 @@
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   min-width: 0;
   padding: 16px 18px;
@@ -10,6 +10,16 @@
   bottom: 0;
   width: 100%;
   z-index: 1;
+}
+
+.fileInput {
+  display: none;
+}
+
+.labTools {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .composer textarea {
@@ -22,6 +32,16 @@
   padding: 11px 12px;
   color: var(--text);
   resize: none;
+}
+
+@media (max-width: 560px) {
+  .composer {
+    grid-template-columns: 1fr auto;
+  }
+
+  .labTools {
+    grid-column: 1 / -1;
+  }
 }
 
 .composer textarea:focus {

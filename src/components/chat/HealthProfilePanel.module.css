@@ -1,0 +1,152 @@
+.panel {
+  flex: 1 1 auto;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.header,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header h2,
+.section h3 {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.header h2 {
+  font-size: 20px;
+}
+
+.section h3 {
+  font-size: 15px;
+}
+
+.header p,
+.statusText,
+.successText,
+.errorText {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+}
+
+.section > button {
+  justify-self: start;
+}
+
+.metaGrid,
+.textGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricList {
+  display: grid;
+  gap: 10px;
+}
+
+.metricCard {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.4fr) minmax(110px, 1fr) minmax(90px, 0.8fr) auto;
+  gap: 10px;
+  align-items: end;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.metaGrid label,
+.textGrid label,
+.metricCard label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.metaGrid input,
+.metaGrid select,
+.metricCard input,
+.textGrid textarea {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: var(--text);
+}
+
+.textGrid textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.iconButton:hover {
+  background: var(--surface-muted);
+}
+
+.actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.successText {
+  color: var(--primary);
+}
+
+.errorText {
+  color: var(--danger);
+}
+
+@media (max-width: 720px) {
+  .metaGrid,
+  .textGrid,
+  .metricCard {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    align-items: stretch;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+
+  .section > button {
+    justify-self: stretch;
+  }
+}

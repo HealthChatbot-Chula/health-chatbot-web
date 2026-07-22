@@ -6,10 +6,24 @@ export async function listUserConversations(userId: string) {
   return prisma.conversation.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
+    take: 1,
     include: {
       messages: {
         orderBy: { createdAt: "asc" },
         take: 1
+      }
+    }
+  });
+}
+
+export async function getLatestUserConversation(userId: string) {
+  return prisma.conversation.findFirst({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: {
+      healthState: true,
+      messages: {
+        orderBy: { createdAt: "asc" }
       }
     }
   });

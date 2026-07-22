@@ -107,6 +107,10 @@ When `DEV_AUTH_BYPASS="true"`, open:
 http://localhost:3000/chat
 ```
 
+## API Documentation
+
+See [docs/API.md](docs/API.md) for all API routes, request bodies, response shapes, auth requirements, and common errors.
+
 ## Useful Commands
 
 ```powershell

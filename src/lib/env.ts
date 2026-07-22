@@ -20,7 +20,8 @@ const envSchema = z
   CHAT_COMPLETIONS_BASE_URL: z.string().url(),
   CHAT_COMPLETIONS_PATH: z.string().min(1).default("/v1/chat/completions"),
   CHAT_MODEL: z.string().min(1).default("health-agent"),
-  CHAT_COMPLETIONS_API_KEY: z.string().optional().default("")
+  CHAT_COMPLETIONS_API_KEY: z.string().optional().default(""),
+  LAB_EXTRACTION_PATH: z.string().optional().default("")
 })
   .superRefine((value, context) => {
     const canSkipLineConfig =
@@ -55,7 +56,8 @@ export const env = envSchema.parse({
   CHAT_COMPLETIONS_BASE_URL: process.env.CHAT_COMPLETIONS_BASE_URL,
   CHAT_COMPLETIONS_PATH: process.env.CHAT_COMPLETIONS_PATH,
   CHAT_MODEL: process.env.CHAT_MODEL,
-  CHAT_COMPLETIONS_API_KEY: process.env.CHAT_COMPLETIONS_API_KEY
+  CHAT_COMPLETIONS_API_KEY: process.env.CHAT_COMPLETIONS_API_KEY,
+  LAB_EXTRACTION_PATH: process.env.LAB_EXTRACTION_PATH
 });
 
 export const isProduction = env.NODE_ENV === "production";

@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftClose, SquarePen } from "lucide-react";
+import { PanelLeftClose } from "lucide-react";
 
 import type { ConversationSummary } from "@/features/chat/chat.types";
 
@@ -10,13 +10,11 @@ export function ConversationSidebar({
   conversations,
   activeConversationId,
   onSelectConversation,
-  onNewConversation,
   onCloseSidebar
 }: {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
-  onNewConversation: () => void;
   onCloseSidebar: () => void;
 }) {
   return (
@@ -31,16 +29,7 @@ export function ConversationSidebar({
         >
           <PanelLeftClose size={18} aria-hidden="true" />
         </button>
-        <strong>Conversations</strong>
-        <button
-          aria-label="New chat"
-          className={styles.iconButton}
-          type="button"
-          onClick={onNewConversation}
-          title="New chat"
-        >
-          <SquarePen size={18} aria-hidden="true" />
-        </button>
+        <strong>Chat</strong>
       </div>
       <div className={styles.list}>
         {conversations.map((conversation) => (

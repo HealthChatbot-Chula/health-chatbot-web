@@ -21,6 +21,7 @@ model User {
   conversations Conversation[]
   patientProfile PatientProfile?
   labReports     LabReport[]
+  attachments    Attachment[]
 }
 
 model Session {
@@ -47,6 +48,7 @@ model Conversation {
   messages Message[]
   healthState ConversationHealthState?
   labReports  LabReport[]
+  attachments Attachment[]
 
   @@index([userId, updatedAt])
 }
@@ -65,6 +67,24 @@ model Message {
   @@index([conversationId, createdAt])
 }
 
+model Attachment {
+  id             String   @id @default(cuid())
+  userId         String
+  conversationId String?
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  data           Bytes
+  createdAt      DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  labReports   LabReport[]
+
+  @@index([userId, createdAt])
+  @@index([conversationId, createdAt])
+}
+
 model PatientProfile {
   id                 String   @id @default(cuid())
   userId             String   @unique
@@ -72,6 +92,7 @@ model PatientProfile {
   birthDate          DateTime?
   underlyingDiseases Json?
   currentMedications Json?
+  healthMetrics      Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -93,37 +114,48 @@ model ConversationHealthState {
 }
 
 model LabReport {
-  id              String   @id @default(cuid())
-  userId          String
-  conversationId  String?
-  sourceMessageId String?
-  measuredAt      DateTime?
-  reportedAt      DateTime @default(now())
-  fastingStatus   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String
+  conversationId     String?
+  sourceMessageId    String?
+  sourceAttachmentId String?
+  status             String   @default("draft")
+  measuredAt         DateTime?
+  reportedAt         DateTime @default(now())
+  fastingStatus      String?
+  extractionRawJson  Json?
+  ocrText            String?
+  confidence         Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversation  Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   sourceMessage Message?      @relation("LabReportSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  sourceAttachment Attachment? @relation(fields: [sourceAttachmentId], references: [id], onDelete: SetNull)
   results       LabResult[]
 
   @@index([userId, reportedAt])
   @@index([conversationId, reportedAt])
+  @@index([sourceAttachmentId])
+  @@index([status])
 }
 
 model LabResult {
   id             String   @id @default(cuid())
   labReportId    String
+  status         String   @default("draft")
   name           String
   value          Float
   unit           String?
   referenceRange String?
   flag           String?
+  confidence     Float?
   createdAt      DateTime @default(now())
 
   labReport LabReport @relation(fields: [labReportId], references: [id], onDelete: Cascade)
 
   @@index([labReportId])
   @@index([name])
+  @@index([status])
 }
