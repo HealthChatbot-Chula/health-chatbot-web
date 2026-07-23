@@ -44,7 +44,7 @@ export async function getUserConversation(userId: string, conversationId: string
   });
 }
 
-export async function createUserConversation(userId: string, title = "New chat") {
+export async function createUserConversation(userId: string, title = "Health chat") {
   return prisma.conversation.create({
     data: {
       userId,

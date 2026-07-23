@@ -1,16 +1,17 @@
 import { Prisma } from "@prisma/client";
 
+import { AppError } from "@/lib/errors";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
+import {
+  completedHealthMetrics,
+  defaultHealthMetrics,
+  hasPatientProfileErrors,
+  validatePatientProfile
+} from "@/features/profile/profile-rules";
 import {
   getPatientProfile,
   upsertPatientProfile
 } from "@/server/repositories/patient-profile.repository";
-
-const defaultMetrics: HealthMetric[] = [
-  { id: "ldl", label: "LDL", value: "", unit: "mg/dL" },
-  { id: "bp_systolic", label: "ความดันตัวบน", value: "", unit: "mmHg" },
-  { id: "bp_diastolic", label: "ความดันตัวล่าง", value: "", unit: "mmHg" }
-];
 
 function calculateAge(birthDate?: Date | null) {
   if (!birthDate) {
@@ -49,7 +50,7 @@ function stringArrayFromJson(value: Prisma.JsonValue | null): string[] {
 
 function metricsFromJson(value: Prisma.JsonValue | null): HealthMetric[] {
   if (!Array.isArray(value)) {
-    return defaultMetrics;
+    return defaultHealthMetrics;
   }
 
   const savedMetrics: HealthMetric[] = [];
@@ -61,10 +62,10 @@ function metricsFromJson(value: Prisma.JsonValue | null): HealthMetric[] {
 
     const record = item as Record<string, unknown>;
     const metric: HealthMetric = {
-        id: typeof record.id === "string" ? record.id : undefined,
-        label: typeof record.label === "string" ? record.label : "",
-        value: typeof record.value === "string" ? record.value : "",
-        unit: typeof record.unit === "string" ? record.unit : null
+      id: typeof record.id === "string" ? record.id : undefined,
+      label: typeof record.label === "string" ? record.label : "",
+      value: typeof record.value === "string" ? record.value : "",
+      unit: typeof record.unit === "string" ? record.unit : null
     };
 
     if (metric.label.length > 0) {
@@ -72,7 +73,7 @@ function metricsFromJson(value: Prisma.JsonValue | null): HealthMetric[] {
     }
   }
 
-  const merged = [...defaultMetrics];
+  const merged = [...defaultHealthMetrics];
   for (const metric of savedMetrics) {
     const index = metric.id ? merged.findIndex((item) => item.id === metric.id) : -1;
     if (index >= 0) {
@@ -104,26 +105,59 @@ export async function getPatientProfileForUser(userId: string) {
   return serializeProfile(profile);
 }
 
+export function patientProfileToHealthState(profile: PatientProfileForm): Partial<{
+  age: number;
+  gender: string;
+  underlying_disease: string[];
+  current_medications: string[];
+  extracted_lab_values: Record<string, number>;
+  profile_metrics: Array<{
+    label: string;
+    value: string;
+    unit?: string | null;
+  }>;
+}> {
+  const labValues: Record<string, number> = {};
+  const completedMetrics = completedHealthMetrics(profile.healthMetrics);
+
+  for (const metric of completedMetrics) {
+    const numericValue = Number(metric.value);
+    if (Number.isFinite(numericValue)) {
+      labValues[metric.label] = numericValue;
+    }
+  }
+
+  return {
+    ...(profile.age !== null && profile.age !== undefined ? { age: profile.age } : {}),
+    ...(profile.sex ? { gender: profile.sex } : {}),
+    underlying_disease: profile.underlyingDiseases,
+    current_medications: profile.currentMedications,
+    extracted_lab_values: labValues,
+    profile_metrics: completedMetrics.map((metric) => ({
+      label: metric.label,
+      value: metric.value,
+      unit: metric.unit
+    }))
+  };
+}
+
 export async function updatePatientProfileForUser(
   userId: string,
   input: PatientProfileForm
 ) {
+  const validationErrors = validatePatientProfile(input);
+
+  if (hasPatientProfileErrors(validationErrors)) {
+    throw new AppError("กรุณาตรวจข้อมูลสุขภาพให้ครบก่อนบันทึก", 400);
+  }
+
   const profile = await upsertPatientProfile({
     userId,
     sex: input.sex?.trim() || null,
     birthDate: birthDateFromAge(input.age),
     underlyingDiseases: toPrismaJson(input.underlyingDiseases),
     currentMedications: toPrismaJson(input.currentMedications),
-    healthMetrics: toPrismaJson(
-      input.healthMetrics
-        .filter((metric) => metric.label.trim().length > 0 && metric.value.trim().length > 0)
-        .map((metric) => ({
-          id: metric.id,
-          label: metric.label.trim(),
-          value: metric.value.trim(),
-          unit: metric.unit?.trim() || null
-        }))
-    )
+    healthMetrics: toPrismaJson(completedHealthMetrics(input.healthMetrics))
   });
 
   return serializeProfile(profile);

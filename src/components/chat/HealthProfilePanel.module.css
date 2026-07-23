@@ -97,6 +97,18 @@
   color: var(--text);
 }
 
+.invalidField input,
+.invalidField select {
+  border-color: var(--danger);
+  background: #fff7f5;
+}
+
+.invalidField span {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .textGrid textarea {
   min-height: 92px;
   resize: vertical;

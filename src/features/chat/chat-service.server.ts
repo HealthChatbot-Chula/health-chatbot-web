@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 
 import { AppError } from "@/lib/errors";
+import {
+  getPatientProfileForUser,
+  patientProfileToHealthState
+} from "@/features/profile/profile-service.server";
 import { createHealthChatCompletion } from "@/server/clients/health-backend.client";
 import {
   createConversationMessage,
@@ -20,7 +24,7 @@ const SINGLE_CHAT_TITLE = "Health chat";
 function titleFromMessage(message: string) {
   const compact = message.replace(/\s+/g, " ").trim();
   if (compact.length <= 40) {
-    return compact || "New chat";
+    return compact || SINGLE_CHAT_TITLE;
   }
 
   return `${compact.slice(0, 40)}...`;
@@ -73,6 +77,28 @@ function toPrismaJsonObject(value: HealthState): Prisma.InputJsonObject {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
 }
 
+function mergeHealthState(
+  savedHealthState: unknown,
+  profileHealthState: ReturnType<typeof patientProfileToHealthState>
+): HealthState {
+  return {
+    ...(isHealthState(savedHealthState) ? savedHealthState : {}),
+    ...profileHealthState
+  };
+}
+
+function serializeConversationSummary(conversation: {
+  id: string;
+  title: string;
+  updatedAt: Date;
+}) {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    updatedAt: conversation.updatedAt.toISOString()
+  };
+}
+
 async function getOrCreateSingleConversation(userId: string, title = SINGLE_CHAT_TITLE) {
   const existingConversation = await getLatestUserConversation(userId);
 
@@ -93,6 +119,64 @@ async function getOrCreateSingleConversation(userId: string, title = SINGLE_CHAT
   return {
     conversation,
     isCreated: true
+  };
+}
+
+async function persistHealthState(
+  conversationId: string,
+  healthState: HealthState | undefined
+) {
+  if (!healthState) {
+    return;
+  }
+
+  await upsertConversationHealthState({
+    conversationId,
+    state: toPrismaJsonObject(healthState),
+    pendingSlot:
+      typeof healthState.pending_slot === "string" ? healthState.pending_slot : null,
+    summary:
+      typeof healthState.summary === "string" ? healthState.summary : null
+  });
+}
+
+async function createAssistantReply(input: {
+  conversationId: string;
+  userId: string;
+}) {
+  const history = await listConversationMessages(input.conversationId);
+  const savedHealthState = await getConversationHealthState(input.conversationId);
+  const profile = await getPatientProfileForUser(input.userId);
+  const healthState = mergeHealthState(
+    savedHealthState?.state,
+    patientProfileToHealthState(profile)
+  );
+  const assistantResult = await createHealthChatCompletion({
+    conversationId: input.conversationId,
+    userId: input.userId,
+    healthState,
+    messages: history.map((message) => ({
+      id: message.id,
+      role: message.role as ChatMessage["role"],
+      content: message.content,
+      createdAt: message.createdAt
+    }))
+  });
+
+  const assistantMessage = await createConversationMessage({
+    conversationId: input.conversationId,
+    role: "assistant",
+    content: assistantResult.content,
+    metadata: assistantResult.quickReplies
+      ? { quickReplies: assistantResult.quickReplies }
+      : undefined
+  });
+
+  await persistHealthState(input.conversationId, assistantResult.healthState);
+
+  return {
+    assistantMessage,
+    quickReplies: assistantResult.quickReplies
   };
 }
 
@@ -126,7 +210,7 @@ export async function listConversationsForUser(userId: string) {
   }));
 }
 
-export async function createBlankConversation(userId: string) {
+export async function getOrCreateConversationForUser(userId: string) {
   const { conversation } = await getOrCreateSingleConversation(userId);
 
   return {
@@ -160,43 +244,10 @@ export async function sendMessageToConversation(input: {
     content: input.message
   });
 
-  const history = await listConversationMessages(conversation.id);
-  const savedHealthState = await getConversationHealthState(conversation.id);
-  const assistantResult = await createHealthChatCompletion({
+  const assistantReply = await createAssistantReply({
     conversationId: conversation.id,
-    userId: input.userId,
-    healthState: isHealthState(savedHealthState?.state) ? savedHealthState.state : undefined,
-    messages: history.map((message) => ({
-      id: message.id,
-      role: message.role as ChatMessage["role"],
-      content: message.content,
-      createdAt: message.createdAt
-    }))
+    userId: input.userId
   });
-
-  const assistantMessage = await createConversationMessage({
-    conversationId: conversation.id,
-    role: "assistant",
-    content: assistantResult.content,
-    metadata: assistantResult.quickReplies
-      ? { quickReplies: assistantResult.quickReplies }
-      : undefined
-  });
-
-  if (assistantResult.healthState) {
-    await upsertConversationHealthState({
-      conversationId: conversation.id,
-      state: toPrismaJsonObject(assistantResult.healthState),
-      pendingSlot:
-        typeof assistantResult.healthState.pending_slot === "string"
-          ? assistantResult.healthState.pending_slot
-          : null,
-      summary:
-        typeof assistantResult.healthState.summary === "string"
-          ? assistantResult.healthState.summary
-          : null
-    });
-  }
 
   const updatedConversation = await touchConversation(
     conversation.id,
@@ -204,16 +255,12 @@ export async function sendMessageToConversation(input: {
   );
 
   return {
-    conversation: {
-      id: updatedConversation.id,
-      title: updatedConversation.title,
-      updatedAt: updatedConversation.updatedAt.toISOString()
-    },
+    conversation: serializeConversationSummary(updatedConversation),
     messages: [
       serializeMessage(userMessage),
       {
-        ...serializeMessage(assistantMessage),
-        quickReplies: assistantResult.quickReplies
+        ...serializeMessage(assistantReply.assistantMessage),
+        quickReplies: assistantReply.quickReplies
       }
     ]
   };
@@ -280,43 +327,10 @@ export async function sendConfirmedLabReportToConversation(input: {
     } as Prisma.InputJsonObject
   });
 
-  const history = await listConversationMessages(conversation.id);
-  const savedHealthState = await getConversationHealthState(conversation.id);
-  const assistantResult = await createHealthChatCompletion({
+  const assistantReply = await createAssistantReply({
     conversationId: conversation.id,
-    userId: input.userId,
-    healthState: isHealthState(savedHealthState?.state) ? savedHealthState.state : undefined,
-    messages: history.map((message) => ({
-      id: message.id,
-      role: message.role as ChatMessage["role"],
-      content: message.content,
-      createdAt: message.createdAt
-    }))
+    userId: input.userId
   });
-
-  const assistantMessage = await createConversationMessage({
-    conversationId: conversation.id,
-    role: "assistant",
-    content: assistantResult.content,
-    metadata: assistantResult.quickReplies
-      ? { quickReplies: assistantResult.quickReplies }
-      : undefined
-  });
-
-  if (assistantResult.healthState) {
-    await upsertConversationHealthState({
-      conversationId: conversation.id,
-      state: toPrismaJsonObject(assistantResult.healthState),
-      pendingSlot:
-        typeof assistantResult.healthState.pending_slot === "string"
-          ? assistantResult.healthState.pending_slot
-          : null,
-      summary:
-        typeof assistantResult.healthState.summary === "string"
-          ? assistantResult.healthState.summary
-          : null
-    });
-  }
 
   const updatedConversation = await touchConversation(
     conversation.id,
@@ -325,16 +339,12 @@ export async function sendConfirmedLabReportToConversation(input: {
 
   return {
     sourceMessageId: userMessage.id,
-    conversation: {
-      id: updatedConversation.id,
-      title: updatedConversation.title,
-      updatedAt: updatedConversation.updatedAt.toISOString()
-    },
+    conversation: serializeConversationSummary(updatedConversation),
     messages: [
       serializeMessage(userMessage),
       {
-        ...serializeMessage(assistantMessage),
-        quickReplies: assistantResult.quickReplies
+        ...serializeMessage(assistantReply.assistantMessage),
+        quickReplies: assistantReply.quickReplies
       }
     ]
   };

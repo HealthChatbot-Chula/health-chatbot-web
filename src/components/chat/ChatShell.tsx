@@ -1,16 +1,13 @@
 "use client";
 
-import { PanelLeftOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
-import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { HealthProfilePanel } from "@/components/chat/HealthProfilePanel";
-import { LabReportReview } from "@/components/chat/LabReportReview";
 import { MessageList } from "@/components/chat/MessageList";
 import type { ChatMessage, ConversationSummary } from "@/features/chat/chat.types";
 import type { LabReportDraft } from "@/features/labs/lab.types";
-import type { PatientProfileForm } from "@/features/profile/profile.types";
+import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
 
 import styles from "./ChatShell.module.css";
 
@@ -34,22 +31,51 @@ type AttachmentResponse = {
   createdAt: string;
 };
 
-type ConfirmLabReportResponse = SendMessageResponse & {
-  labReport: LabReportDraft;
-};
+function metricIdFromLabName(name: string) {
+  const normalizedName = name.trim().toLowerCase();
+
+  if (normalizedName === "ldl" || normalizedName.includes("ldl")) {
+    return "ldl";
+  }
+
+  if (
+    normalizedName.includes("systolic") ||
+    normalizedName.includes("sbp") ||
+    normalizedName.includes("ตัวบน")
+  ) {
+    return "bp_systolic";
+  }
+
+  if (
+    normalizedName.includes("diastolic") ||
+    normalizedName.includes("dbp") ||
+    normalizedName.includes("ตัวล่าง")
+  ) {
+    return "bp_diastolic";
+  }
+
+  return undefined;
+}
+
+function labResultToHealthMetric(result: LabReportDraft["results"][number]): HealthMetric {
+  return {
+    id: metricIdFromLabName(result.name),
+    label: result.name,
+    value: String(result.value),
+    unit: result.unit ?? ""
+  };
+}
 
 export function ChatShell() {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isLabBusy, setIsLabBusy] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isViewportReady, setIsViewportReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [labDraft, setLabDraft] = useState<LabReportDraft | null>(null);
   const [isHealthProfileOpen, setIsHealthProfileOpen] = useState(false);
+  const [seedHealthMetrics, setSeedHealthMetrics] = useState<HealthMetric[]>([]);
+  const [healthProfileKey, setHealthProfileKey] = useState(0);
 
   async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, {
@@ -70,7 +96,6 @@ export function ChatShell() {
 
   async function loadConversations() {
     const data = await fetchJson<ConversationSummary[]>("/api/conversations");
-    setConversations(data);
 
     if (data.length > 0) {
       await loadConversation(data[0].id);
@@ -86,32 +111,11 @@ export function ChatShell() {
 
   useEffect(() => {
     // Loading initial conversations is the external sync for this client-only shell.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadConversations()
       .catch((loadError) => setError(loadError.message))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 820px)");
-
-    function syncSidebarWithViewport() {
-      setIsSidebarOpen(!mediaQuery.matches);
-      setIsViewportReady(true);
-    }
-
-    syncSidebarWithViewport();
-    mediaQuery.addEventListener("change", syncSidebarWithViewport);
-
-    return () => mediaQuery.removeEventListener("change", syncSidebarWithViewport);
-  }, []);
-
-  function closeSidebarOnMobile() {
-    if (window.matchMedia("(max-width: 820px)").matches) {
-      setIsSidebarOpen(false);
-    }
-  }
 
   async function handleSend(message: string) {
     setIsSending(true);
@@ -139,10 +143,6 @@ export function ChatShell() {
         const withoutOptimistic = current.filter((item) => item !== optimisticMessage);
         return [...withoutOptimistic, ...data.messages];
       });
-      setConversations((current) => {
-        const existing = current.filter((item) => item.id !== data.conversation.id);
-        return [data.conversation, ...existing];
-      });
     } catch (sendError) {
       setMessages((current) => current.filter((item) => item !== optimisticMessage));
       setError(sendError instanceof Error ? sendError.message : "Could not send message");
@@ -154,7 +154,6 @@ export function ChatShell() {
   async function handleLabFileSelected(file: File) {
     setIsLabBusy(true);
     setError(null);
-    setIsHealthProfileOpen(false);
 
     try {
       const formData = new FormData();
@@ -182,77 +181,12 @@ export function ChatShell() {
         })
       });
 
-      setLabDraft(draft);
+      setSeedHealthMetrics(draft.results.map(labResultToHealthMetric));
+      setHealthProfileKey((current) => current + 1);
+      setIsHealthProfileOpen(true);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Could not read lab report");
     } finally {
-      setIsLabBusy(false);
-    }
-  }
-
-  async function handleManualLabEntry() {
-    setIsLabBusy(true);
-    setError(null);
-    setIsHealthProfileOpen(false);
-
-    try {
-      const draft = await fetchJson<LabReportDraft>("/api/lab/reports/manual", {
-        method: "POST",
-        body: JSON.stringify({
-          conversationId: activeConversationId,
-          results: []
-        })
-      });
-      setLabDraft(draft);
-    } catch (manualError) {
-      setError(manualError instanceof Error ? manualError.message : "Could not create lab draft");
-    } finally {
-      setIsLabBusy(false);
-    }
-  }
-
-  async function handleSaveLabDraft(draft: LabReportDraft) {
-    setIsLabBusy(true);
-    setError(null);
-
-    try {
-      const saved = await fetchJson<LabReportDraft>(`/api/lab/reports/${draft.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          measuredAt: draft.measuredAt,
-          fastingStatus: draft.fastingStatus,
-          ocrText: draft.ocrText,
-          results: draft.results.filter((result) => result.name.trim().length > 0)
-        })
-      });
-      setLabDraft(saved);
-      return saved;
-    } finally {
-      setIsLabBusy(false);
-    }
-  }
-
-  async function handleConfirmLabDraft(draft: LabReportDraft) {
-    setIsLabBusy(true);
-    setIsSending(true);
-    setError(null);
-
-    try {
-      const data = await fetchJson<ConfirmLabReportResponse>(`/api/lab/reports/${draft.id}/confirm`, {
-        method: "POST"
-      });
-
-      setLabDraft(null);
-      setActiveConversationId(data.conversation.id);
-      setMessages((current) => [...current, ...data.messages]);
-      setConversations((current) => {
-        const existing = current.filter((item) => item.id !== data.conversation.id);
-        return [data.conversation, ...existing];
-      });
-    } catch (confirmError) {
-      setError(confirmError instanceof Error ? confirmError.message : "Could not confirm lab report");
-    } finally {
-      setIsSending(false);
       setIsLabBusy(false);
     }
   }
@@ -271,48 +205,10 @@ export function ChatShell() {
     }
   }
 
-  function handleSelectConversation(conversationId: string) {
-    void loadConversation(conversationId).catch((loadError) => setError(loadError.message));
-    closeSidebarOnMobile();
-  }
-
-  const isPanelOpen = Boolean(labDraft) || isHealthProfileOpen;
+  const isPanelOpen = isHealthProfileOpen;
 
   return (
-    <div
-      className={`${styles.shell} ${isViewportReady ? styles.viewportReady : ""} ${
-        isSidebarOpen ? styles.sidebarOpen : styles.sidebarCollapsed
-      }`}
-    >
-      {isViewportReady && isSidebarOpen ? (
-        <button
-          aria-label="Close conversations"
-          className={styles.backdrop}
-          onClick={() => setIsSidebarOpen(false)}
-          type="button"
-        />
-      ) : null}
-      <div className={styles.sidebarPane}>
-        <ConversationSidebar
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          onSelectConversation={handleSelectConversation}
-          onCloseSidebar={() => setIsSidebarOpen(false)}
-        />
-      </div>
-      {!isSidebarOpen ? (
-        <nav className={styles.rail} aria-label="Chat tools">
-          <button
-            aria-label="Show conversations"
-            className={styles.railButton}
-            onClick={() => setIsSidebarOpen(true)}
-            title="Show conversations"
-            type="button"
-          >
-            <PanelLeftOpen size={20} aria-hidden="true" />
-          </button>
-        </nav>
-      ) : null}
+    <div className={styles.shell}>
       <section className={`${styles.main} ${isPanelOpen ? styles.panelMode : ""}`}>
         {!isPanelOpen ? (
           <div className={styles.messageRegion}>
@@ -326,19 +222,11 @@ export function ChatShell() {
           </div>
         ) : (
           <div className={styles.panelRegion}>
-            {labDraft ? (
-              <LabReportReview
-                key={labDraft.id}
-                report={labDraft}
-                isBusy={isLabBusy || isSending}
-                onCancel={() => setLabDraft(null)}
-                onSave={handleSaveLabDraft}
-                onConfirm={handleConfirmLabDraft}
-              />
-            ) : null}
             {isHealthProfileOpen ? (
               <HealthProfilePanel
+                key={healthProfileKey}
                 isBusy={isLabBusy || isSending}
+                seedMetrics={seedHealthMetrics}
                 onClose={() => setIsHealthProfileOpen(false)}
                 onSave={handleSaveHealthProfile}
               />
@@ -351,9 +239,9 @@ export function ChatShell() {
             disabled={isSending || isLoading || isLabBusy}
             onSend={handleSend}
             onLabFileSelected={handleLabFileSelected}
-            onManualLabEntry={handleManualLabEntry}
             onHealthProfileOpen={() => {
-              setLabDraft(null);
+              setSeedHealthMetrics([]);
+              setHealthProfileKey((current) => current + 1);
               setIsHealthProfileOpen(true);
             }}
           />

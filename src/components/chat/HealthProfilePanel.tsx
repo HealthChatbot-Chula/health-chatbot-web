@@ -5,34 +5,22 @@ import { useEffect, useState } from "react";
 
 import buttonStyles from "@/components/ui/Button.module.css";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
+import {
+  emptyHealthMetric,
+  emptyPatientProfile,
+  hasPatientProfileErrors,
+  type PatientProfileFieldErrors,
+  validatePatientProfile
+} from "@/features/profile/profile-rules";
 
 import styles from "./HealthProfilePanel.module.css";
 
 type Props = {
   isBusy: boolean;
+  seedMetrics?: HealthMetric[];
   onClose: () => void;
   onSave: (profile: PatientProfileForm) => Promise<PatientProfileForm>;
 };
-
-const emptyProfile: PatientProfileForm = {
-  sex: "",
-  age: null,
-  underlyingDiseases: [],
-  currentMedications: [],
-  healthMetrics: [
-    { id: "ldl", label: "LDL", value: "", unit: "mg/dL" },
-    { id: "bp_systolic", label: "ความดันตัวบน", value: "", unit: "mmHg" },
-    { id: "bp_diastolic", label: "ความดันตัวล่าง", value: "", unit: "mmHg" }
-  ]
-};
-
-function emptyMetric(): HealthMetric {
-  return {
-    label: "",
-    value: "",
-    unit: ""
-  };
-}
 
 function toLines(values: string[]) {
   return values.join("\n");
@@ -45,11 +33,37 @@ function fromLines(value: string) {
     .filter(Boolean);
 }
 
-export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
-  const [profile, setProfile] = useState<PatientProfileForm>(emptyProfile);
+function mergeHealthMetrics(currentMetrics: HealthMetric[], seedMetrics: HealthMetric[]) {
+  const merged = [...currentMetrics];
+
+  for (const seedMetric of seedMetrics) {
+    const matchingIndex = merged.findIndex((metric) => {
+      if (seedMetric.id && metric.id === seedMetric.id) {
+        return true;
+      }
+
+      return metric.label.trim().toLowerCase() === seedMetric.label.trim().toLowerCase();
+    });
+
+    if (matchingIndex >= 0) {
+      merged[matchingIndex] = {
+        ...merged[matchingIndex],
+        ...seedMetric
+      };
+    } else {
+      merged.push(seedMetric);
+    }
+  }
+
+  return merged;
+}
+
+export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }: Props) {
+  const [profile, setProfile] = useState<PatientProfileForm>(emptyPatientProfile);
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<PatientProfileFieldErrors>({ metrics: {} });
 
   useEffect(() => {
     let isMounted = true;
@@ -67,7 +81,14 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
 
         const data = (await response.json()) as PatientProfileForm;
         if (isMounted) {
-          setProfile(data);
+          setProfile({
+            ...data,
+            healthMetrics:
+              seedMetrics.length > 0
+                ? mergeHealthMetrics(data.healthMetrics, seedMetrics)
+                : data.healthMetrics
+          });
+          setFieldErrors({ metrics: {} });
         }
       } catch (loadError) {
         if (isMounted) {
@@ -85,7 +106,7 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [seedMetrics]);
 
   function updateMetric(index: number, patch: Partial<HealthMetric>) {
     setProfile((current) => ({
@@ -106,6 +127,13 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
   async function saveProfile() {
     setError(null);
     setStatus(null);
+    const validationErrors = validatePatientProfile(profile);
+    setFieldErrors(validationErrors);
+
+    if (hasPatientProfileErrors(validationErrors)) {
+      setError("กรุณาตรวจช่องที่ถูกไฮไลต์สีแดงก่อนบันทึก");
+      return;
+    }
 
     try {
       const saved = await onSave(profile);
@@ -142,7 +170,7 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
       <div className={styles.section}>
         <h3>ข้อมูลส่วนตัว</h3>
         <div className={styles.metaGrid}>
-          <label>
+          <label className={fieldErrors.sex ? styles.invalidField : ""}>
             เพศ
             <select
               value={profile.sex ?? ""}
@@ -159,8 +187,9 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
               <option value="male">ชาย</option>
               <option value="other">อื่น ๆ</option>
             </select>
+            {fieldErrors.sex ? <span>{fieldErrors.sex}</span> : null}
           </label>
-          <label>
+          <label className={fieldErrors.age ? styles.invalidField : ""}>
             อายุ
             <input
               type="number"
@@ -175,6 +204,7 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
               }
               disabled={disabled}
             />
+            {fieldErrors.age ? <span>{fieldErrors.age}</span> : null}
           </label>
         </div>
       </div>
@@ -184,7 +214,7 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
         <div className={styles.metricList}>
           {profile.healthMetrics.map((metric, index) => (
             <article className={styles.metricCard} key={metric.id ?? index}>
-              <label>
+              <label className={fieldErrors.metrics[index]?.label ? styles.invalidField : ""}>
                 ชื่อค่า
                 <input
                   value={metric.label}
@@ -192,8 +222,11 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
                   disabled={disabled}
                   placeholder="เช่น LDL, HbA1c"
                 />
+                {fieldErrors.metrics[index]?.label ? (
+                  <span>{fieldErrors.metrics[index]?.label}</span>
+                ) : null}
               </label>
-              <label>
+              <label className={fieldErrors.metrics[index]?.value ? styles.invalidField : ""}>
                 ค่า
                 <input
                   value={metric.value}
@@ -202,7 +235,7 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
                   placeholder="เช่น 145"
                 />
               </label>
-              <label>
+              <label className={fieldErrors.metrics[index]?.unit ? styles.invalidField : ""}>
                 หน่วย
                 <input
                   value={metric.unit ?? ""}
@@ -210,6 +243,9 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
                   disabled={disabled}
                   placeholder="mg/dL"
                 />
+                {fieldErrors.metrics[index]?.unit ? (
+                  <span>{fieldErrors.metrics[index]?.unit}</span>
+                ) : null}
               </label>
               <button
                 aria-label="Remove metric"
@@ -230,7 +266,7 @@ export function HealthProfilePanel({ isBusy, onClose, onSave }: Props) {
           onClick={() =>
             setProfile((current) => ({
               ...current,
-              healthMetrics: [...current.healthMetrics, emptyMetric()]
+              healthMetrics: [...current.healthMetrics, emptyHealthMetric()]
             }))
           }
           type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { FilePlus2, HeartPulse, Keyboard, Send } from "lucide-react";
+import { FilePlus2, HeartPulse, Send } from "lucide-react";
 import { ChangeEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, useRef, useState } from "react";
 
 import buttonStyles from "@/components/ui/Button.module.css";
@@ -11,13 +11,11 @@ export function ChatComposer({
   disabled,
   onSend,
   onLabFileSelected,
-  onManualLabEntry,
   onHealthProfileOpen
 }: {
   disabled: boolean;
   onSend: (message: string) => Promise<void>;
   onLabFileSelected: (file: File) => Promise<void>;
-  onManualLabEntry: () => Promise<void>;
   onHealthProfileOpen: () => void;
 }) {
   const [message, setMessage] = useState("");
@@ -87,18 +85,6 @@ export function ChatComposer({
           type="button"
         >
           <FilePlus2 size={18} aria-hidden="true" />
-        </button>
-        <button
-          aria-label="Enter lab report manually"
-          className={`${buttonStyles.iconButton} ${buttonStyles.secondary}`}
-          disabled={disabled}
-          onClick={() => {
-            void onManualLabEntry();
-          }}
-          title="Enter lab report manually"
-          type="button"
-        >
-          <Keyboard size={18} aria-hidden="true" />
         </button>
       </div>
       <textarea

@@ -33,14 +33,14 @@ export const createManualLabReportDraftSchema = updateLabReportDraftSchema.exten
 
 export const healthMetricSchema = z.object({
   id: z.string().optional(),
-  label: z.string().trim().min(1).max(120),
-  value: z.string().trim().min(1).max(80),
+  label: z.string().trim().max(120),
+  value: z.string().trim().max(80),
   unit: z.string().trim().max(40).optional().nullable()
 });
 
 export const updatePatientProfileSchema = z.object({
-  sex: z.string().trim().max(40).optional().nullable(),
-  age: z.coerce.number().int().min(0).max(130).optional().nullable(),
+  sex: z.string().trim().min(1).max(40),
+  age: z.coerce.number().int().min(0).max(130),
   underlyingDiseases: z.array(z.string().trim().min(1).max(120)).max(50),
   currentMedications: z.array(z.string().trim().min(1).max(120)).max(50),
   healthMetrics: z.array(healthMetricSchema).max(100)

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireFriendUser } from "@/features/auth/session.server";
 import {
-  createBlankConversation,
+  getOrCreateConversationForUser,
   listConversationsForUser
 } from "@/features/chat/chat-service.server";
 import { jsonError } from "@/lib/http";
@@ -23,7 +23,7 @@ export async function GET() {
 export async function POST() {
   try {
     const user = await requireFriendUser();
-    const conversation = await createBlankConversation(user.id);
+    const conversation = await getOrCreateConversationForUser(user.id);
     return NextResponse.json(conversation, { status: 201 });
   } catch (error) {
     return jsonError(error);
