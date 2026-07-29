@@ -1,7 +1,7 @@
 "use client";
 
-import { Plus, Save, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CheckCircle2, Plus, Save, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import buttonStyles from "@/components/ui/Button.module.css";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
@@ -64,6 +64,7 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<PatientProfileFieldErrors>({ metrics: {} });
+  const closeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -108,6 +109,14 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
     };
   }, [seedMetrics]);
 
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
   function updateMetric(index: number, patch: Partial<HealthMetric>) {
     setProfile((current) => ({
       ...current,
@@ -139,12 +148,13 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
       const saved = await onSave(profile);
       setProfile(saved);
       setStatus("บันทึกข้อมูลสุขภาพแล้ว");
+      closeTimerRef.current = window.setTimeout(onClose, 1300);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "บันทึกข้อมูลสุขภาพไม่สำเร็จ");
     }
   }
 
-  const disabled = isBusy || isLoading;
+  const disabled = isBusy || isLoading || Boolean(status);
 
   return (
     <section className={styles.panel} aria-label="Health profile form">
@@ -328,7 +338,14 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
         </button>
       </div>
 
-      {status ? <p className={styles.successText}>{status}</p> : null}
+      {status ? (
+        <div className={styles.successOverlay} role="status">
+          <div className={styles.successDialog}>
+          <CheckCircle2 size={20} aria-hidden="true" />
+          <span>{status}</span>
+          </div>
+        </div>
+      ) : null}
       {error ? <p className={styles.errorText}>{error}</p> : null}
     </section>
   );

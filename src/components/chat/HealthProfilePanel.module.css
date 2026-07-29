@@ -1,4 +1,5 @@
 .panel {
+  position: relative;
   flex: 1 1 auto;
   display: grid;
   align-content: start;
@@ -137,6 +138,30 @@
 
 .successText {
   color: var(--primary);
+}
+
+.successOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.successDialog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #9ac7a4;
+  border-radius: 8px;
+  padding: 16px 18px;
+  background: #f0fff4;
+  color: #17633a;
+  box-shadow: var(--shadow);
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .errorText {
