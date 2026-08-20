@@ -9,7 +9,11 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const url = await createLineAuthorizationUrl();
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(url, {
+      headers: {
+        "ngrok-skip-browser-warning": "true"
+      }
+    });
   } catch (error) {
     return jsonError(error);
   }

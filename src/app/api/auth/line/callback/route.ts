@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { env } from "@/lib/env";
 import { getLineFriendshipStatus } from "@/features/auth/friendship.server";
 import {
   consumeAndVerifyLineState,
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     await createUserSession(user.id);
 
     const nextPath = friendFlag ? routes.chat : routes.lineRequired;
-    return NextResponse.redirect(new URL(nextPath, request.url));
+    return NextResponse.redirect(new URL(nextPath, env.APP_URL));
   } catch (caughtError) {
     return jsonError(caughtError);
   }
