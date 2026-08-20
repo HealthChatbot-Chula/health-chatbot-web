@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:status": "prisma migrate status",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

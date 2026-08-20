@@ -9,7 +9,7 @@ LINE is used for authentication and friend-gating only. Users chat with the bot 
 - Next.js
 - TypeScript
 - Prisma
-- SQLite for local development
+- Neon PostgreSQL for shared development and production
 
 ## Requirements
 
@@ -34,24 +34,26 @@ Copy-Item .env.local .env -Force
 Generate Prisma Client:
 
 ```powershell
-npx prisma generate
+npm run prisma:generate
 ```
 
-Initialize the local database:
+Apply the committed PostgreSQL migrations to your Neon development branch:
 
 ```powershell
-npx prisma migrate dev --name init
+npm run prisma:migrate:deploy
+npm run prisma:migrate:status
 ```
 
-If Prisma migrate fails on Windows with a blank schema engine error, use:
-
-```powershell
-sqlite3.exe prisma\dev.db ".read prisma/migrations/20260603153000_init/migration.sql"
-```
+See [NEON_SETUP.md](NEON_SETUP.md) before creating the Neon project or changing a
+database schema. The old SQLite migrations are retained in
+`prisma/migrations-sqlite-archive` for reference only and must not be deployed.
 
 ## Environment
 
 Use `.env.example` as the template.
+
+Set `DATABASE_URL` to the pooled Neon connection string and `DIRECT_URL` to the
+direct Neon connection string. Never commit either value.
 
 For local chat testing without LINE:
 
@@ -76,7 +78,6 @@ Do not commit:
 .env.local
 node_modules
 .next
-prisma/dev.db
 ```
 
 ## Run
@@ -107,16 +108,13 @@ When `DEV_AUTH_BYPASS="true"`, open:
 http://localhost:3000/chat
 ```
 
-## API Documentation
-
-See [docs/API.md](docs/API.md) for all API routes, request bodies, response shapes, auth requirements, and common errors.
-
 ## Useful Commands
 
 ```powershell
 npm run dev
 npm run lint
-npx tsc --noEmit
-npx prisma generate
-npx prisma studio
+npm run prisma:generate
+npm run prisma:migrate:status
+npm run prisma:migrate:deploy
+npm run prisma:studio
 ```

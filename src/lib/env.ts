@@ -5,6 +5,7 @@ const envSchema = z
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.string().url(),
   DATABASE_URL: z.string().min(1),
+  DIRECT_URL: z.string().min(1),
   SESSION_SECRET: z.string().min(32),
 
   DEV_AUTH_BYPASS: z
@@ -48,6 +49,7 @@ export const env = envSchema.parse({
   NODE_ENV: process.env.NODE_ENV,
   APP_URL: process.env.APP_URL,
   DATABASE_URL: process.env.DATABASE_URL,
+  DIRECT_URL: process.env.DIRECT_URL,
   SESSION_SECRET: process.env.SESSION_SECRET,
   DEV_AUTH_BYPASS: process.env.DEV_AUTH_BYPASS,
   LINE_CHANNEL_ID: process.env.LINE_CHANNEL_ID,
