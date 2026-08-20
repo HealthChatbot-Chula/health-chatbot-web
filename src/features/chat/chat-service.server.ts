@@ -77,12 +77,39 @@ function toPrismaJsonObject(value: HealthState): Prisma.InputJsonObject {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
 }
 
+function sanitizeHealthState(value: unknown): HealthState {
+  if (!isHealthState(value)) {
+    return {};
+  }
+
+  const state = value as HealthState;
+  const sanitized: HealthState = {};
+  const assignIfPresent = (key: keyof HealthState) => {
+    if (state[key] !== undefined && state[key] !== null) {
+      sanitized[key] = state[key];
+    }
+  };
+
+  assignIfPresent("age");
+  assignIfPresent("gender");
+  assignIfPresent("underlying_disease");
+  assignIfPresent("current_medications");
+  assignIfPresent("current_symptoms");
+  assignIfPresent("fasting_status");
+  assignIfPresent("extracted_lab_values");
+  assignIfPresent("profile_metrics");
+  assignIfPresent("pending_slot");
+  assignIfPresent("summary");
+
+  return sanitized;
+}
+
 function mergeHealthState(
   savedHealthState: unknown,
   profileHealthState: ReturnType<typeof patientProfileToHealthState>
 ): HealthState {
   return {
-    ...(isHealthState(savedHealthState) ? savedHealthState : {}),
+    ...sanitizeHealthState(savedHealthState),
     ...profileHealthState
   };
 }
@@ -126,17 +153,23 @@ async function persistHealthState(
   conversationId: string,
   healthState: HealthState | undefined
 ) {
-  if (!healthState) {
+  const sanitizedHealthState = sanitizeHealthState(healthState);
+
+  if (Object.keys(sanitizedHealthState).length === 0) {
     return;
   }
 
   await upsertConversationHealthState({
     conversationId,
-    state: toPrismaJsonObject(healthState),
+    state: toPrismaJsonObject(sanitizedHealthState),
     pendingSlot:
-      typeof healthState.pending_slot === "string" ? healthState.pending_slot : null,
+      typeof sanitizedHealthState.pending_slot === "string"
+        ? sanitizedHealthState.pending_slot
+        : null,
     summary:
-      typeof healthState.summary === "string" ? healthState.summary : null
+      typeof sanitizedHealthState.summary === "string"
+        ? sanitizedHealthState.summary
+        : null
   });
 }
 
