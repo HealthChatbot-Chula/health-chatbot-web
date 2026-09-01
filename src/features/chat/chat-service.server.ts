@@ -106,11 +106,13 @@ function sanitizeHealthState(value: unknown): HealthState {
 
 function mergeHealthState(
   savedHealthState: unknown,
-  profileHealthState: ReturnType<typeof patientProfileToHealthState>
+  profileHealthState: ReturnType<typeof patientProfileToHealthState>,
+  overrideHealthState?: HealthState
 ): HealthState {
   return {
     ...sanitizeHealthState(savedHealthState),
-    ...profileHealthState
+    ...profileHealthState,
+    ...(overrideHealthState ? sanitizeHealthState(overrideHealthState) : {})
   };
 }
 
@@ -176,13 +178,15 @@ async function persistHealthState(
 async function createAssistantReply(input: {
   conversationId: string;
   userId: string;
+  healthStateOverride?: HealthState;
 }) {
   const history = await listConversationMessages(input.conversationId);
   const savedHealthState = await getConversationHealthState(input.conversationId);
   const profile = await getPatientProfileForUser(input.userId);
   const healthState = mergeHealthState(
     savedHealthState?.state,
-    patientProfileToHealthState(profile)
+    patientProfileToHealthState(profile),
+    input.healthStateOverride
   );
   const assistantResult = await createHealthChatCompletion({
     conversationId: input.conversationId,
@@ -210,6 +214,37 @@ async function createAssistantReply(input: {
   return {
     assistantMessage,
     quickReplies: assistantResult.quickReplies
+  };
+}
+
+function labReportToHealthState(input: {
+  fastingStatus?: string | null;
+  results: Array<{
+    name: string;
+    value: number;
+    unit?: string | null;
+  }>;
+}): HealthState {
+  const extractedLabValues: Record<string, number> = {};
+
+  for (const result of input.results) {
+    const name = result.name.trim();
+    if (name && Number.isFinite(result.value)) {
+      extractedLabValues[name] = result.value;
+    }
+  }
+
+  return {
+    ...(Object.keys(extractedLabValues).length > 0
+      ? { extracted_lab_values: extractedLabValues }
+      : {}),
+    ...(input.fastingStatus ? { fasting_status: input.fastingStatus } : {}),
+    profile_metrics: input.results.map((result) => ({
+      label: result.name,
+      value: String(result.value),
+      unit: result.unit ?? null
+    })),
+    pending_slot: null
   };
 }
 
@@ -362,7 +397,8 @@ export async function sendConfirmedLabReportToConversation(input: {
 
   const assistantReply = await createAssistantReply({
     conversationId: conversation.id,
-    userId: input.userId
+    userId: input.userId,
+    healthStateOverride: labReportToHealthState(input.labReport)
   });
 
   const updatedConversation = await touchConversation(
