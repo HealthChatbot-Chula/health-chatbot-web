@@ -84,7 +84,6 @@ export async function getCurrentSession() {
   });
 
   if (!session) {
-    cookieStore.delete(SESSION_COOKIE_NAME);
     return null;
   }
 
@@ -92,7 +91,6 @@ export async function getCurrentSession() {
     await prisma.session.delete({
       where: { id: session.id }
     });
-    cookieStore.delete(SESSION_COOKIE_NAME);
     return null;
   }
 
