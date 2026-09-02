@@ -55,6 +55,7 @@ export async function createUserConversation(userId: string, title = "Health cha
 
 export async function createConversationMessage(input: {
   conversationId: string;
+  replyToMessageId?: string;
   role: "user" | "assistant" | "system";
   content: string;
   metadata?: Prisma.InputJsonValue;

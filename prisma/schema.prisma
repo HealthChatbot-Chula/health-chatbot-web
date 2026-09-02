@@ -57,15 +57,19 @@ model Conversation {
 model Message {
   id             String   @id @default(cuid())
   conversationId String
+  replyToMessageId String?
   role           String
   content        String
   metadata       Json?
   createdAt      DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  replyToMessage Message? @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies        Message[] @relation("MessageReplies")
   sourceLabReports LabReport[] @relation("LabReportSourceMessage")
 
   @@index([conversationId, createdAt])
+  @@index([replyToMessageId])
 }
 
 model Attachment {

@@ -178,6 +178,7 @@ async function persistHealthState(
 async function createAssistantReply(input: {
   conversationId: string;
   userId: string;
+  replyToMessageId: string;
   healthStateOverride?: HealthState;
 }) {
   const history = await listConversationMessages(input.conversationId);
@@ -202,6 +203,7 @@ async function createAssistantReply(input: {
 
   const assistantMessage = await createConversationMessage({
     conversationId: input.conversationId,
+    replyToMessageId: input.replyToMessageId,
     role: "assistant",
     content: assistantResult.content,
     metadata: assistantResult.quickReplies
@@ -314,7 +316,8 @@ export async function sendMessageToConversation(input: {
 
   const assistantReply = await createAssistantReply({
     conversationId: conversation.id,
-    userId: input.userId
+    userId: input.userId,
+    replyToMessageId: userMessage.id
   });
 
   const updatedConversation = await touchConversation(
@@ -398,6 +401,7 @@ export async function sendConfirmedLabReportToConversation(input: {
   const assistantReply = await createAssistantReply({
     conversationId: conversation.id,
     userId: input.userId,
+    replyToMessageId: userMessage.id,
     healthStateOverride: labReportToHealthState(input.labReport)
   });
 
