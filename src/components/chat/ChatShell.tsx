@@ -6,7 +6,6 @@ import { ChatComposer } from "@/components/chat/ChatComposer";
 import { HealthProfilePanel } from "@/components/chat/HealthProfilePanel";
 import { MessageList } from "@/components/chat/MessageList";
 import type { ChatMessage, ConversationSummary } from "@/features/chat/chat.types";
-import type { LabReportDraft } from "@/features/labs/lab.types";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
 
 import styles from "./ChatShell.module.css";
@@ -22,49 +21,6 @@ type SendMessageResponse = {
   conversation: ConversationSummary;
   messages: ChatMessage[];
 };
-
-type AttachmentResponse = {
-  id: string;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  createdAt: string;
-};
-
-function metricIdFromLabName(name: string) {
-  const normalizedName = name.trim().toLowerCase();
-
-  if (normalizedName === "ldl" || normalizedName.includes("ldl")) {
-    return "ldl";
-  }
-
-  if (
-    normalizedName.includes("systolic") ||
-    normalizedName.includes("sbp") ||
-    normalizedName.includes("ตัวบน")
-  ) {
-    return "bp_systolic";
-  }
-
-  if (
-    normalizedName.includes("diastolic") ||
-    normalizedName.includes("dbp") ||
-    normalizedName.includes("ตัวล่าง")
-  ) {
-    return "bp_diastolic";
-  }
-
-  return undefined;
-}
-
-function labResultToHealthMetric(result: LabReportDraft["results"][number]): HealthMetric {
-  return {
-    id: metricIdFromLabName(result.name),
-    label: result.name,
-    value: String(result.value),
-    unit: result.unit ?? ""
-  };
-}
 
 export function ChatShell() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -151,46 +107,6 @@ export function ChatShell() {
     }
   }
 
-  async function handleLabFileSelected(file: File) {
-    setIsLabBusy(true);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      if (activeConversationId) {
-        formData.append("conversationId", activeConversationId);
-      }
-
-      const uploadResponse = await fetch("/api/lab/attachments", {
-        method: "POST",
-        body: formData
-      });
-
-      if (!uploadResponse.ok) {
-        const data = await uploadResponse.json().catch(() => null);
-        throw new Error(data?.error?.message ?? "Upload failed");
-      }
-
-      const attachment = (await uploadResponse.json()) as AttachmentResponse;
-      const draft = await fetchJson<LabReportDraft>("/api/lab/reports/extract", {
-        method: "POST",
-        body: JSON.stringify({
-          attachmentId: attachment.id,
-          conversationId: activeConversationId
-        })
-      });
-
-      setSeedHealthMetrics(draft.results.map(labResultToHealthMetric));
-      setHealthProfileKey((current) => current + 1);
-      setIsHealthProfileOpen(true);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Could not read lab report");
-    } finally {
-      setIsLabBusy(false);
-    }
-  }
-
   async function handleSaveHealthProfile(profile: PatientProfileForm) {
     setIsLabBusy(true);
     setError(null);
@@ -238,7 +154,6 @@ export function ChatShell() {
           <ChatComposer
             disabled={isSending || isLoading || isLabBusy}
             onSend={handleSend}
-            onLabFileSelected={handleLabFileSelected}
             onHealthProfileOpen={() => {
               setSeedHealthMetrics([]);
               setHealthProfileKey((current) => current + 1);

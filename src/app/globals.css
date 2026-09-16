@@ -1,18 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@100;200;300;400;500;600;700&display=swap');
 :root {
-  --background: #f9f7f7;
+  --background: #f8f7f2;
   --surface: #ffffff;
-  --surface-muted: #dbe2ef;
-  --surface-soft: #eef3fb;
-  --text: #112d4e;
-  --muted: #60718c;
-  --border: #cbd6e6;
-  --primary: #3f72af;
-  --primary-dark: #112d4e;
-  --primary-soft: #eef5ff;
+  --surface-muted: #e8f3f0;
+  --surface-soft: #fffaf0;
+  --text: #493f38;
+  --muted: #7f756d;
+  --border: #e6ddd3;
+  --primary: #e9786f;
+  --primary-dark: #cb5e57;
+  --primary-soft: #fff0ec;
+  --accent: #63b8ae;
+  --accent-dark: #428f87;
+  --accent-soft: #e6f6f3;
   --danger: #b42318;
-  --focus-ring: rgba(63, 114, 175, 0.22);
-  --shadow: 0 10px 30px rgba(17, 45, 78, 0.1);
+  --focus-ring: rgba(99, 184, 174, 0.2);
+  --shadow: 0 14px 38px rgba(83, 67, 56, 0.1);
 }
 
 * {
@@ -22,6 +25,11 @@
 html,
 body {
   min-height: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -49,4 +57,11 @@ textarea {
 
 button {
   cursor: pointer;
+}
+
+button,
+input,
+textarea,
+select {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }

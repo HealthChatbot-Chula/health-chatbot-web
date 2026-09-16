@@ -1,10 +1,21 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 
 import type { ChatMessage } from "@/features/chat/chat.types";
 
 import styles from "./MessageBubble.module.css";
 
 const boldPattern = /\*\*(.+?)\*\*/g;
+
+type MarkdownListItem = {
+  text: string;
+  children: MarkdownListItem[];
+};
+
+type PendingListItem = {
+  indent: number;
+  text: string;
+};
 
 function renderInlineMarkdown(text: string, keyPrefix: string) {
   const nodes: ReactNode[] = [];
@@ -28,10 +39,52 @@ function renderInlineMarkdown(text: string, keyPrefix: string) {
   return nodes;
 }
 
+function buildListTree(items: PendingListItem[]) {
+  const root: MarkdownListItem[] = [];
+  const stack: Array<{ indent: number; children: MarkdownListItem[] }> = [
+    { indent: -1, children: root }
+  ];
+
+  for (const item of items) {
+    while (stack.length > 1 && item.indent <= stack[stack.length - 1].indent) {
+      stack.pop();
+    }
+
+    const node: MarkdownListItem = { text: item.text, children: [] };
+    stack[stack.length - 1].children.push(node);
+    stack.push({ indent: item.indent, children: node.children });
+  }
+
+  return root;
+}
+
+function renderMarkdownList(items: MarkdownListItem[], keyPrefix: string, isNested = false) {
+  const className = isNested
+    ? `${styles.markdownList} ${styles.nestedMarkdownList}`
+    : styles.markdownList;
+
+  return (
+    <ul className={className} key={keyPrefix}>
+      {items.map((item, itemIndex) => {
+        const itemKey = `${keyPrefix}-${itemIndex}`;
+
+        return (
+          <li className={styles.markdownListItem} key={itemKey}>
+            {renderInlineMarkdown(item.text, itemKey)}
+            {item.children.length > 0
+              ? renderMarkdownList(item.children, `${itemKey}-nested`, true)
+              : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function renderMessageContent(content: string) {
   const nodes: ReactNode[] = [];
   let blockIndex = 0;
-  let listItems: string[] = [];
+  let listItems: PendingListItem[] = [];
 
   function flushList() {
     if (listItems.length === 0) {
@@ -39,38 +92,49 @@ function renderMessageContent(content: string) {
     }
 
     const listKey = `list-${blockIndex}`;
-    const items = listItems;
+    const items = buildListTree(listItems);
     blockIndex += 1;
     listItems = [];
 
-    nodes.push(
-      <ul className={styles.markdownList} key={listKey}>
-        {items.map((item, itemIndex) => (
-          <li className={styles.markdownListItem} key={`${listKey}-${itemIndex}`}>
-            {renderInlineMarkdown(item, `${listKey}-${itemIndex}`)}
-          </li>
-        ))}
-      </ul>
-    );
+    nodes.push(renderMarkdownList(items, listKey));
   }
 
   content.split(/\r?\n/).forEach((line, lineIndex) => {
-    const bulletMatch = line.match(/^\s*[*-]\s+(.+)$/);
+    const bulletMatch = line.match(/^(\s*)[*-]\s+(.+)$/);
 
     if (bulletMatch) {
-      listItems.push(bulletMatch[1]);
+      listItems.push({
+        indent: bulletMatch[1].replace(/\t/g, "    ").length,
+        text: bulletMatch[2]
+      });
       return;
     }
 
     flushList();
 
-    if (line.trim().length === 0) {
+    const trimmedLine = line.trim();
+
+    if (trimmedLine.length === 0) {
+      return;
+    }
+
+    const headingMatch = trimmedLine.match(/^#{1,4}\s+(.+)$/);
+    const boldHeadingMatch = trimmedLine.match(/^\*\*(.+?)\*\*\s*$/);
+
+    if (headingMatch || boldHeadingMatch) {
+      const heading = headingMatch?.[1] ?? boldHeadingMatch?.[1] ?? trimmedLine;
+      nodes.push(
+        <h3 className={styles.messageHeading} key={`heading-${blockIndex}`}>
+          {renderInlineMarkdown(heading, `heading-${lineIndex}`)}
+        </h3>
+      );
+      blockIndex += 1;
       return;
     }
 
     nodes.push(
       <p className={styles.paragraph} key={`paragraph-${blockIndex}`}>
-        {renderInlineMarkdown(line, `paragraph-${lineIndex}`)}
+        {renderInlineMarkdown(trimmedLine, `paragraph-${lineIndex}`)}
       </p>
     );
     blockIndex += 1;
@@ -82,10 +146,22 @@ function renderMessageContent(content: string) {
 }
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
-  const rowClassName = message.role === "user" ? `${styles.row} ${styles.user}` : styles.row;
+  const isUser = message.role === "user";
+  const rowClassName = isUser
+    ? `${styles.row} ${styles.user}`
+    : `${styles.row} ${styles.assistant}`;
 
   return (
     <div className={rowClassName}>
+      {!isUser ? (
+        <Image
+          className={styles.botAvatar}
+          src="/images/health-chatbot-profile.png"
+          alt="Health Chatbot"
+          width={40}
+          height={40}
+        />
+      ) : null}
       <div className={styles.bubble}>{renderMessageContent(message.content)}</div>
     </div>
   );

@@ -24,7 +24,7 @@ export function UserMenu({ user }: UserMenuProps) {
       ) : (
         <span className={styles.avatar} aria-hidden="true" />
       )}
-      <span>{user.displayName ?? "LINE user"}</span>
+      <span className={styles.userName}>{user.displayName ?? "LINE user"}</span>
       <Link className={secondaryIconButton} href={routes.profile} title="Profile">
         <UserRound size={17} aria-hidden="true" />
       </Link>

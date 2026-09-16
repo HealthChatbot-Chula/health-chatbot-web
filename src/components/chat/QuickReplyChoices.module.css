@@ -7,20 +7,23 @@
 }
 
 .choice {
-  min-height: 38px;
+  min-height: 40px;
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0 16px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--primary-dark);
   font-weight: 700;
+  box-shadow: 0 5px 16px rgba(83, 67, 56, 0.05);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
 .choice:hover:not(:disabled),
 .choice:focus-visible {
-  border-color: var(--primary);
-  background: var(--primary-soft);
+  border-color: var(--accent);
+  background: var(--accent-soft);
   outline: none;
+  transform: translateY(-1px);
 }
 
 .choice:disabled {

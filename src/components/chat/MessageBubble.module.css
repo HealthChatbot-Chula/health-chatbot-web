@@ -1,33 +1,58 @@
 .row {
   display: flex;
+  align-items: flex-end;
+  gap: 10px;
   min-width: 0;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .user {
   justify-content: flex-end;
 }
 
+.botAvatar {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 5px 14px rgba(83, 67, 56, 0.13), 0 0 0 1px var(--border);
+}
+
 .bubble {
   max-width: min(720px, 82%);
   min-width: 0;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  background: var(--surface);
-  line-height: 1.6;
+  border-radius: 22px 22px 22px 8px;
+  padding: 13px 17px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 7px 22px rgba(83, 67, 56, 0.06);
+  line-height: 1.65;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .user .bubble {
-  background: var(--primary);
+  border-color: transparent;
+  border-radius: 22px 22px 8px 22px;
+  background: linear-gradient(145deg, #ed8178, #df6e68);
   color: #ffffff;
-  border-color: var(--primary);
+  box-shadow: 0 8px 22px rgba(216, 103, 94, 0.19);
 }
 
 .paragraph {
   margin: 0;
+}
+
+.messageHeading {
+  margin: 14px 0 6px;
+  font-size: 1em;
+  line-height: 1.45;
+}
+
+.messageHeading:first-child {
+  margin-top: 0;
 }
 
 .paragraph + .paragraph,
@@ -41,6 +66,11 @@
   padding-left: 22px;
 }
 
+.nestedMarkdownList {
+  margin-top: 5px;
+  padding-left: 20px;
+}
+
 .markdownListItem {
   margin: 4px 0;
   padding-left: 2px;
@@ -51,7 +81,29 @@
 }
 
 @media (max-width: 820px) {
+  .assistant {
+    padding-right: 10%;
+  }
+
+  .user {
+    padding-left: 16%;
+  }
+
   .bubble {
-    max-width: 92%;
+    max-width: calc(100% - 42px);
+    padding: 10px 13px;
+    border-radius: 18px 18px 18px 7px;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .botAvatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user .bubble {
+    max-width: 100%;
+    border-radius: 18px 18px 7px 18px;
   }
 }
