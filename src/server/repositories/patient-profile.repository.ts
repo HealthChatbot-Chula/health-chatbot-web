@@ -8,6 +8,17 @@ export async function getPatientProfile(userId: string) {
   });
 }
 
+export async function updatePatientProfileMetrics(
+  userId: string,
+  healthMetrics: Prisma.InputJsonValue
+) {
+  return prisma.patientProfile.upsert({
+    where: { userId },
+    create: { userId, healthMetrics },
+    update: { healthMetrics }
+  });
+}
+
 export async function upsertPatientProfile(input: {
   userId: string;
   sex?: string | null;

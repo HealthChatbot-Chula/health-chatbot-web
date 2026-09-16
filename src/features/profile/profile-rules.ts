@@ -1,10 +1,7 @@
+import { catalogMetrics, findMetricDefinition } from "@/features/profile/metric-catalog";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
 
-export const defaultHealthMetrics: HealthMetric[] = [
-  { id: "ldl", label: "LDL", value: "", unit: "mg/dL" },
-  { id: "bp_systolic", label: "ความดันตัวบน", value: "", unit: "mmHg" },
-  { id: "bp_diastolic", label: "ความดันตัวล่าง", value: "", unit: "mmHg" }
-];
+export const defaultHealthMetrics: HealthMetric[] = catalogMetrics();
 
 export const emptyPatientProfile: PatientProfileForm = {
   sex: "",
@@ -20,20 +17,8 @@ export type PatientProfileFieldErrors = {
   metrics: Record<number, Partial<Record<"label" | "value" | "unit", string>>>;
 };
 
-export function emptyHealthMetric(): HealthMetric {
-  return {
-    label: "",
-    value: "",
-    unit: ""
-  };
-}
-
 export function isHealthMetricEmpty(metric: HealthMetric) {
-  return (
-    metric.label.trim().length === 0 &&
-    metric.value.trim().length === 0 &&
-    (!metric.unit || metric.unit.trim().length === 0)
-  );
+  return metric.value.trim().length === 0;
 }
 
 export function validatePatientProfile(profile: PatientProfileForm): PatientProfileFieldErrors {
@@ -54,23 +39,28 @@ export function validatePatientProfile(profile: PatientProfileForm): PatientProf
       continue;
     }
 
-    if (!metric.label.trim()) {
+    const numericValue = Number(metric.value.trim());
+
+    if (!Number.isFinite(numericValue)) {
       errors.metrics[index] = {
         ...errors.metrics[index],
-        label: "กรุณากรอกชื่อค่า"
+        value: "กรุณากรอกเป็นตัวเลข"
       };
+      continue;
     }
 
-    if (!metric.value.trim()) {
+    const definition = metric.id ? findMetricDefinition(metric.id) : undefined;
+
+    if (definition && (numericValue < definition.min || numericValue > definition.max)) {
       errors.metrics[index] = {
         ...errors.metrics[index],
-        value: "กรุณากรอกค่า"
+        value: `ค่าควรอยู่ระหว่าง ${definition.min}-${definition.max}`
       };
     }
   }
 
-  const systolicIndex = profile.healthMetrics.findIndex((metric) => metric.id === "bp_systolic");
-  const diastolicIndex = profile.healthMetrics.findIndex((metric) => metric.id === "bp_diastolic");
+  const systolicIndex = profile.healthMetrics.findIndex((metric) => metric.id === "SBP");
+  const diastolicIndex = profile.healthMetrics.findIndex((metric) => metric.id === "DBP");
   const hasSystolic =
     systolicIndex >= 0 && profile.healthMetrics[systolicIndex]?.value.trim().length > 0;
   const hasDiastolic =

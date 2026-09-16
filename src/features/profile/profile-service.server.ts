@@ -8,8 +8,10 @@ import {
   hasPatientProfileErrors,
   validatePatientProfile
 } from "@/features/profile/profile-rules";
+import { acceptMetricValue, findMetricDefinition } from "@/features/profile/metric-catalog";
 import {
   getPatientProfile,
+  updatePatientProfileMetrics,
   upsertPatientProfile
 } from "@/server/repositories/patient-profile.repository";
 
@@ -75,11 +77,12 @@ function metricsFromJson(value: Prisma.JsonValue | null): HealthMetric[] {
 
   const merged = [...defaultHealthMetrics];
   for (const metric of savedMetrics) {
-    const index = metric.id ? merged.findIndex((item) => item.id === metric.id) : -1;
+    const canonicalId = metric.id ? findMetricDefinition(metric.id)?.id : undefined;
+    const index = canonicalId ? merged.findIndex((item) => item.id === canonicalId) : -1;
     if (index >= 0) {
-      merged[index] = metric;
-    } else {
-      merged.push(metric);
+      // Only the value is owned by storage; the catalog owns label and unit, so
+      // renaming a field shows up immediately on profiles saved before the rename.
+      merged[index] = { ...merged[index], value: metric.value };
     }
   }
 
@@ -123,7 +126,8 @@ export function patientProfileToHealthState(profile: PatientProfileForm): Partia
   for (const metric of completedMetrics) {
     const numericValue = Number(metric.value);
     if (Number.isFinite(numericValue)) {
-      labValues[metric.label] = numericValue;
+      // Key by catalog id — the agent matches on canonical names like "SBP", not Thai labels.
+      labValues[metric.id ?? metric.label] = numericValue;
     }
   }
 
@@ -139,6 +143,39 @@ export function patientProfileToHealthState(profile: PatientProfileForm): Partia
       unit: metric.unit
     }))
   };
+}
+
+/**
+ * Writes values the chat agent reported back onto the stored profile.
+ * Only ids present in `values` are touched, so a chat that mentions two labs
+ * never clears the rest of the page.
+ */
+export async function mergeAgentMetricsIntoProfile(
+  userId: string,
+  values: Record<string, unknown>
+) {
+  const profile = await getPatientProfileForUser(userId);
+  const metricsById = new Map<string | undefined, HealthMetric>(
+    completedHealthMetrics(profile.healthMetrics).map((metric) => [metric.id, metric])
+  );
+
+  let changed = false;
+
+  for (const [rawId, rawValue] of Object.entries(values)) {
+    const accepted = acceptMetricValue(rawId, rawValue);
+    if (!accepted || metricsById.get(accepted.id)?.value === accepted.value) {
+      continue;
+    }
+
+    metricsById.set(accepted.id, accepted);
+    changed = true;
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  await updatePatientProfileMetrics(userId, toPrismaJson([...metricsById.values()]));
 }
 
 export async function updatePatientProfileForUser(

@@ -63,15 +63,63 @@
   gap: 10px;
 }
 
-.metricCard {
-  display: grid;
-  grid-template-columns: minmax(160px, 1.4fr) minmax(110px, 1fr) minmax(90px, 0.8fr) auto;
-  gap: 10px;
-  align-items: end;
+.metricGroup {
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 12px;
   background: #ffffff;
+  overflow: hidden;
+}
+
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupToggle:disabled {
+  cursor: default;
+}
+
+.groupCount {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.groupBody {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.metricCard {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.6fr) minmax(100px, 1fr) minmax(90px, 0.7fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.metricName {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.metricUnit {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .metaGrid label,
@@ -170,9 +218,18 @@
 
 @media (max-width: 720px) {
   .metaGrid,
-  .textGrid,
-  .metricCard {
+  .textGrid {
     grid-template-columns: 1fr;
+  }
+
+  .metricCard {
+    grid-template-columns: minmax(0, 1fr) minmax(70px, auto);
+    column-gap: 8px;
+    row-gap: 4px;
+  }
+
+  .metricName {
+    grid-column: 1 / -1;
   }
 
   .actions {

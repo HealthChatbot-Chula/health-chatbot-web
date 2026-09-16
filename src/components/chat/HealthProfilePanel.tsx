@@ -1,14 +1,19 @@
 "use client";
 
-import { CheckCircle2, Plus, Save, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, ChevronDown, ChevronRight, Save, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import buttonStyles from "@/components/ui/Button.module.css";
+import {
+  findMetricDefinition,
+  metricGroupLabels,
+  type MetricGroup
+} from "@/features/profile/metric-catalog";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
 import {
-  emptyHealthMetric,
   emptyPatientProfile,
   hasPatientProfileErrors,
+  isHealthMetricEmpty,
   type PatientProfileFieldErrors,
   validatePatientProfile
 } from "@/features/profile/profile-rules";
@@ -64,7 +69,21 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<PatientProfileFieldErrors>({ metrics: {} });
+  const [openGroups, setOpenGroups] = useState<MetricGroup[]>(["vitals"]);
   const closeTimerRef = useRef<number | null>(null);
+
+  const groupedMetrics = useMemo(() => {
+    const groups = new Map<MetricGroup, Array<{ metric: HealthMetric; index: number }>>();
+
+    for (const [index, metric] of profile.healthMetrics.entries()) {
+      const group = (metric.id ? findMetricDefinition(metric.id)?.group : undefined) ?? "vitals";
+      const bucket = groups.get(group) ?? [];
+      bucket.push({ metric, index });
+      groups.set(group, bucket);
+    }
+
+    return groups;
+  }, [profile.healthMetrics]);
 
   useEffect(() => {
     let isMounted = true;
@@ -82,13 +101,24 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
 
         const data = (await response.json()) as PatientProfileForm;
         if (isMounted) {
-          setProfile({
-            ...data,
-            healthMetrics:
-              seedMetrics.length > 0
-                ? mergeHealthMetrics(data.healthMetrics, seedMetrics)
-                : data.healthMetrics
-          });
+          const healthMetrics =
+            seedMetrics.length > 0
+              ? mergeHealthMetrics(data.healthMetrics, seedMetrics)
+              : data.healthMetrics;
+
+          const filledGroups = new Set<MetricGroup>();
+          for (const metric of healthMetrics) {
+            if (isHealthMetricEmpty(metric) || !metric.id) {
+              continue;
+            }
+            const group = findMetricDefinition(metric.id)?.group;
+            if (group) {
+              filledGroups.add(group);
+            }
+          }
+
+          setProfile({ ...data, healthMetrics });
+          setOpenGroups(filledGroups.size > 0 ? [...filledGroups] : ["vitals"]);
           setFieldErrors({ metrics: {} });
         }
       } catch (loadError) {
@@ -126,11 +156,10 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
     }));
   }
 
-  function removeMetric(index: number) {
-    setProfile((current) => ({
-      ...current,
-      healthMetrics: current.healthMetrics.filter((_, metricIndex) => metricIndex !== index)
-    }));
+  function toggleGroup(group: MetricGroup) {
+    setOpenGroups((current) =>
+      current.includes(group) ? current.filter((item) => item !== group) : [...current, group]
+    );
   }
 
   async function saveProfile() {
@@ -140,6 +169,13 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
     setFieldErrors(validationErrors);
 
     if (hasPatientProfileErrors(validationErrors)) {
+      // Invalid rows are useless to the user inside a collapsed group.
+      const invalidGroups = Object.keys(validationErrors.metrics)
+        .map((index) => profile.healthMetrics[Number(index)]?.id)
+        .map((id) => (id ? findMetricDefinition(id)?.group : undefined))
+        .filter((group): group is MetricGroup => Boolean(group));
+
+      setOpenGroups((current) => [...new Set([...current, ...invalidGroups])]);
       setError("กรุณาตรวจช่องที่ถูกไฮไลต์สีแดงก่อนบันทึก");
       return;
     }
@@ -222,68 +258,64 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
       <div className={styles.section}>
         <h3>ค่าแลป / ค่าร่างกาย</h3>
         <div className={styles.metricList}>
-          {profile.healthMetrics.map((metric, index) => (
-            <article className={styles.metricCard} key={metric.id ?? index}>
-              <label className={fieldErrors.metrics[index]?.label ? styles.invalidField : ""}>
-                ชื่อค่า
-                <input
-                  value={metric.label}
-                  onChange={(event) => updateMetric(index, { label: event.target.value })}
-                  disabled={disabled}
-                  placeholder="เช่น LDL, HbA1c"
-                />
-                {fieldErrors.metrics[index]?.label ? (
-                  <span>{fieldErrors.metrics[index]?.label}</span>
+          {(Object.keys(metricGroupLabels) as MetricGroup[]).map((group) => {
+            const entries = groupedMetrics.get(group) ?? [];
+
+            if (entries.length === 0) {
+              return null;
+            }
+
+            const isOpen = openGroups.includes(group);
+            const filledCount = entries.filter(
+              ({ metric }) => !isHealthMetricEmpty(metric)
+            ).length;
+
+            return (
+              <section className={styles.metricGroup} key={group}>
+                <button
+                  aria-expanded={isOpen}
+                  className={styles.groupToggle}
+                  onClick={() => toggleGroup(group)}
+                  type="button"
+                >
+                  {isOpen ? (
+                    <ChevronDown size={16} aria-hidden="true" />
+                  ) : (
+                    <ChevronRight size={16} aria-hidden="true" />
+                  )}
+                  {metricGroupLabels[group]}
+                  <span className={styles.groupCount}>
+                    {filledCount > 0 ? `${filledCount}/${entries.length} ค่า` : `${entries.length} ค่า`}
+                  </span>
+                </button>
+
+                {isOpen ? (
+                  <div className={styles.groupBody}>
+                    {entries.map(({ metric, index }) => (
+                      <div className={styles.metricCard} key={metric.id ?? index}>
+                        <span className={styles.metricName}>{metric.label}</span>
+                        <label className={fieldErrors.metrics[index]?.value ? styles.invalidField : ""}>
+                          <input
+                            aria-label={metric.label}
+                            inputMode="decimal"
+                            value={metric.value}
+                            onChange={(event) => updateMetric(index, { value: event.target.value })}
+                            disabled={disabled}
+                            placeholder="-"
+                          />
+                          {fieldErrors.metrics[index]?.value ? (
+                            <span>{fieldErrors.metrics[index]?.value}</span>
+                          ) : null}
+                        </label>
+                        <span className={styles.metricUnit}>{metric.unit ?? ""}</span>
+                      </div>
+                    ))}
+                  </div>
                 ) : null}
-              </label>
-              <label className={fieldErrors.metrics[index]?.value ? styles.invalidField : ""}>
-                ค่า
-                <input
-                  value={metric.value}
-                  onChange={(event) => updateMetric(index, { value: event.target.value })}
-                  disabled={disabled}
-                  placeholder="เช่น 145"
-                />
-              </label>
-              <label className={fieldErrors.metrics[index]?.unit ? styles.invalidField : ""}>
-                หน่วย
-                <input
-                  value={metric.unit ?? ""}
-                  onChange={(event) => updateMetric(index, { unit: event.target.value })}
-                  disabled={disabled}
-                  placeholder="mg/dL"
-                />
-                {fieldErrors.metrics[index]?.unit ? (
-                  <span>{fieldErrors.metrics[index]?.unit}</span>
-                ) : null}
-              </label>
-              <button
-                aria-label="Remove metric"
-                className={styles.iconButton}
-                disabled={disabled}
-                onClick={() => removeMetric(index)}
-                title="Remove"
-                type="button"
-              >
-                <Trash2 size={16} aria-hidden="true" />
-              </button>
-            </article>
-          ))}
+              </section>
+            );
+          })}
         </div>
-        <button
-          className={`${buttonStyles.button} ${buttonStyles.secondary}`}
-          disabled={disabled}
-          onClick={() =>
-            setProfile((current) => ({
-              ...current,
-              healthMetrics: [...current.healthMetrics, emptyHealthMetric()]
-            }))
-          }
-          type="button"
-        >
-          <Plus size={16} aria-hidden="true" />
-          เพิ่มค่า
-        </button>
       </div>
 
       <div className={styles.section}>
