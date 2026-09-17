@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
+import { BookOpenText, ChevronDown } from "lucide-react";
 
 import type { ChatMessage } from "@/features/chat/chat.types";
 
+import { splitTextbookReferences } from "./message-content";
 import styles from "./MessageBubble.module.css";
 
 const boldPattern = /\*\*(.+?)\*\*/g;
@@ -147,6 +149,9 @@ function renderMessageContent(content: string) {
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
+  const sections = isUser
+    ? { body: message.content, textbookReferences: null }
+    : splitTextbookReferences(message.content);
   const rowClassName = isUser
     ? `${styles.row} ${styles.user}`
     : `${styles.row} ${styles.assistant}`;
@@ -162,7 +167,28 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
           height={40}
         />
       ) : null}
-      <div className={styles.bubble}>{renderMessageContent(message.content)}</div>
+      <div className={styles.bubble}>
+        {renderMessageContent(sections.body)}
+        {sections.textbookReferences ? (
+          <details className={styles.references}>
+            <summary className={styles.referencesSummary}>
+              <span className={styles.referencesLabel}>
+                <BookOpenText size={17} strokeWidth={1.9} aria-hidden="true" />
+                อ้างอิงจากตำรา
+              </span>
+              <ChevronDown
+                className={styles.referencesChevron}
+                size={17}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+            </summary>
+            <div className={styles.referencesContent}>
+              {renderMessageContent(sections.textbookReferences)}
+            </div>
+          </details>
+        ) : null}
+      </div>
     </div>
   );
 }
