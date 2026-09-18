@@ -19,6 +19,17 @@ export async function updatePatientProfileMetrics(
   });
 }
 
+export async function updatePatientProfileDemographics(
+  userId: string,
+  data: { sex?: string; birthDate?: Date }
+) {
+  return prisma.patientProfile.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data
+  });
+}
+
 export async function upsertPatientProfile(input: {
   userId: string;
   sex?: string | null;

@@ -30,18 +30,15 @@ export const metricCatalog: MetricDefinition[] = [
   { id: "BMI", label: "ดัชนีมวลกาย (BMI)", unit: "กก./ม.²", group: "vitals", min: 8, max: 100 },
   { id: "WaistCircumference", label: "รอบเอว (Waist)", unit: "ซม.", group: "vitals", min: 30, max: 250 },
 
-  { id: "FBS", label: "น้ำตาลในเลือดขณะอดอาหาร (FPG)", unit: "มก./ดล.", group: "glycemic", min: 20, max: 900 },
-  { id: "Glucose", label: "น้ำตาลในเลือด (Glucose)", unit: "มก./ดล.", group: "glycemic", min: 20, max: 900 },
-  { id: "2-hr PG", label: "น้ำตาลในเลือดที่ 2 ชั่วโมง (2-hr PG)", unit: "มก./ดล.", group: "glycemic", min: 20, max: 900 },
+  { id: "FBS", label: "น้ำตาลในเลือด (FBS)", unit: "มก./ดล.", group: "glycemic", min: 20, max: 900 },
   { id: "HbA1c", label: "น้ำตาลสะสม (HbA1c)", unit: "%", group: "glycemic", min: 3, max: 20 },
-  { id: "Ketone", label: "คีโตนในเลือด (Ketone)", unit: "มิลลิโมล/ล.", group: "glycemic", min: 0, max: 30 },
 
   { id: "Total Cholesterol", label: "คอเลสเตอรอลรวม (Total Cholesterol)", unit: "มก./ดล.", group: "lipid", min: 50, max: 600 },
   { id: "LDL", label: "แอล ดี แอล คอเลสเตอรอล (LDL-C)", unit: "มก./ดล.", group: "lipid", min: 10, max: 500 },
   { id: "HDL", label: "เอช ดี แอล คอเลสเตอรอล (HDL-C)", unit: "มก./ดล.", group: "lipid", min: 5, max: 150 },
-  { id: "non-HDL", label: "นอน-เอช ดี แอล คอเลสเตอรอล (non-HDL-C)", unit: "มก./ดล.", group: "lipid", min: 10, max: 550 },
   { id: "Triglycerides", label: "ไตรกลีเซอไรด์ (Triglycerides)", unit: "มก./ดล.", group: "lipid", min: 20, max: 2000 },
 
+  { id: "Hemoglobin", label: "ฮีโมโกลบิน (Hemoglobin)", unit: "ก./ดล.", group: "kidney", min: 3, max: 25 },
   { id: "eGFR", label: "อัตราการกรองของไต (eGFR)", unit: "มล./นาที/1.73 ม.²", group: "kidney", min: 1, max: 200 },
   { id: "Creatinine", label: "ครีแอตินีน (Creatinine)", unit: "มก./ดล.", group: "kidney", min: 0.1, max: 25 },
   { id: "BUN", label: "ยูเรียไนโตรเจนในเลือด (BUN)", unit: "มก./ดล.", group: "kidney", min: 1, max: 200 },
@@ -49,7 +46,6 @@ export const metricCatalog: MetricDefinition[] = [
   { id: "Potassium", label: "โพแทสเซียม (Potassium)", unit: "มิลลิโมล/ล.", group: "kidney", min: 1, max: 10 },
   { id: "Calcium", label: "แคลเซียม (Calcium)", unit: "มก./ดล.", group: "kidney", min: 3, max: 20 },
   { id: "Phosphate", label: "ฟอสเฟต (Phosphate)", unit: "มก./ดล.", group: "kidney", min: 0.5, max: 15 },
-  { id: "Hemoglobin", label: "ฮีโมโกลบิน (Hemoglobin)", unit: "ก./ดล.", group: "kidney", min: 3, max: 25 },
 
   { id: "AST", label: "เอนไซม์ตับ (AST)", unit: "ยูนิต/ล.", group: "liver", min: 1, max: 5000 },
   { id: "ALT", label: "เอนไซม์ตับ (ALT)", unit: "ยูนิต/ล.", group: "liver", min: 1, max: 5000 }

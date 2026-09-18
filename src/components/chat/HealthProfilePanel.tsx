@@ -11,6 +11,7 @@ import {
 } from "@/features/profile/metric-catalog";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
 import {
+  calculateBmi,
   emptyPatientProfile,
   hasPatientProfileErrors,
   isHealthMetricEmpty,
@@ -148,12 +149,26 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
   }, []);
 
   function updateMetric(index: number, patch: Partial<HealthMetric>) {
-    setProfile((current) => ({
-      ...current,
-      healthMetrics: current.healthMetrics.map((metric, metricIndex) =>
+    setProfile((current) => {
+      const healthMetrics = current.healthMetrics.map((metric, metricIndex) =>
         metricIndex === index ? { ...metric, ...patch } : metric
-      )
-    }));
+      );
+
+      const changedId = current.healthMetrics[index]?.id;
+      if (changedId === "Weight" || changedId === "Height") {
+        const bmiIndex = healthMetrics.findIndex((metric) => metric.id === "BMI");
+        if (bmiIndex >= 0) {
+          const weightKg = Number(healthMetrics.find((metric) => metric.id === "Weight")?.value);
+          const heightCm = Number(healthMetrics.find((metric) => metric.id === "Height")?.value);
+          healthMetrics[bmiIndex] = {
+            ...healthMetrics[bmiIndex],
+            value: calculateBmi(weightKg, heightCm)
+          };
+        }
+      }
+
+      return { ...current, healthMetrics };
+    });
   }
 
   function toggleGroup(group: MetricGroup) {
@@ -300,7 +315,8 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
                             inputMode="decimal"
                             value={metric.value}
                             onChange={(event) => updateMetric(index, { value: event.target.value })}
-                            disabled={disabled}
+                            disabled={disabled || metric.id === "BMI"}
+                            className={metric.id === "BMI" ? styles.readOnlyField : ""}
                             placeholder="-"
                           />
                           {fieldErrors.metrics[index]?.value ? (

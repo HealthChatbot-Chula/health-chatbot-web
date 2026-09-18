@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { AppError } from "@/lib/errors";
 import type { HealthMetric, PatientProfileForm } from "@/features/profile/profile.types";
 import {
+  calculateBmi,
   completedHealthMetrics,
   defaultHealthMetrics,
   hasPatientProfileErrors,
@@ -12,6 +13,7 @@ import { acceptMetricValue, findMetricDefinition } from "@/features/profile/metr
 import {
   getPatientProfile,
   updatePatientProfileMetrics,
+  updatePatientProfileDemographics,
   upsertPatientProfile
 } from "@/server/repositories/patient-profile.repository";
 
@@ -171,11 +173,57 @@ export async function mergeAgentMetricsIntoProfile(
     changed = true;
   }
 
+  // Weight/Height written here never pass through the manual form's onChange
+  // handler, so BMI would otherwise go stale until the user opens the form
+  // and edits either field. Recompute it from whatever Weight/Height ended up
+  // in the map, whether from this chat turn or an earlier save.
+  const bmiDefinition = findMetricDefinition("BMI");
+  if (bmiDefinition) {
+    const weightKg = Number(metricsById.get("Weight")?.value);
+    const heightCm = Number(metricsById.get("Height")?.value);
+    const bmiValue = calculateBmi(weightKg, heightCm);
+    if (metricsById.get("BMI")?.value !== bmiValue) {
+      metricsById.set("BMI", {
+        id: bmiDefinition.id,
+        label: bmiDefinition.label,
+        value: bmiValue,
+        unit: bmiDefinition.unit
+      });
+      changed = true;
+    }
+  }
+
   if (!changed) {
     return;
   }
 
   await updatePatientProfileMetrics(userId, toPrismaJson([...metricsById.values()]));
+}
+
+/**
+ * Writes the sex and age the chat agent collected (e.g. the ชาย/หญิง quick reply
+ * or "อายุ 45") onto the profile. Compares against the profile already loaded
+ * for this turn, so an unchanged value costs no query.
+ */
+export async function mergeAgentDemographicsIntoProfile(
+  userId: string,
+  current: Pick<PatientProfileForm, "sex" | "age">,
+  reported: { gender?: unknown; age?: unknown }
+) {
+  const data: { sex?: string; birthDate?: Date } = {};
+
+  const { gender, age } = reported;
+  if ((gender === "male" || gender === "female") && current.sex !== gender) {
+    data.sex = gender;
+  }
+
+  if (typeof age === "number" && Number.isInteger(age) && age >= 0 && age <= 130 && current.age !== age) {
+    data.birthDate = birthDateFromAge(age) ?? undefined;
+  }
+
+  if (Object.keys(data).length > 0) {
+    await updatePatientProfileDemographics(userId, data);
+  }
 }
 
 export async function updatePatientProfileForUser(

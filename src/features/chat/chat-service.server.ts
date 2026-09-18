@@ -4,6 +4,7 @@ import { AppError } from "@/lib/errors";
 import {
   getPatientProfileForUser,
   mergeAgentMetricsIntoProfile,
+  mergeAgentDemographicsIntoProfile,
   patientProfileToHealthState
 } from "@/features/profile/profile-service.server";
 import { createHealthChatCompletion } from "@/server/clients/health-backend.client";
@@ -214,13 +215,15 @@ async function createAssistantReply(input: {
 
   await persistHealthState(input.conversationId, assistantResult.healthState);
 
-  const reportedLabValues = sanitizeHealthState(assistantResult.healthState).extracted_lab_values;
+  const reportedState = sanitizeHealthState(assistantResult.healthState);
+  const reportedLabValues = reportedState.extracted_lab_values;
   if (reportedLabValues && typeof reportedLabValues === "object") {
     await mergeAgentMetricsIntoProfile(
       input.userId,
       reportedLabValues as Record<string, unknown>
     );
   }
+  await mergeAgentDemographicsIntoProfile(input.userId, profile, reportedState);
 
   return {
     assistantMessage,

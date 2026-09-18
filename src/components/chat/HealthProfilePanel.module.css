@@ -172,6 +172,13 @@
   background: #fff7f5;
 }
 
+.readOnlyField:disabled {
+  background: var(--surface-muted);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .invalidField span {
   color: var(--danger);
   font-size: 12px;

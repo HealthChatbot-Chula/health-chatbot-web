@@ -21,6 +21,14 @@ export function isHealthMetricEmpty(metric: HealthMetric) {
   return metric.value.trim().length === 0;
 }
 
+/** Shared by the manual form's onChange handler and the chat-write path, so BMI is derived the same way regardless of who last touched Weight/Height. */
+export function calculateBmi(weightKg: number, heightCm: number): string {
+  if (!(weightKg > 0) || !(heightCm > 0)) {
+    return "";
+  }
+  return (weightKg / (heightCm / 100) ** 2).toFixed(1);
+}
+
 export function validatePatientProfile(profile: PatientProfileForm): PatientProfileFieldErrors {
   const errors: PatientProfileFieldErrors = { metrics: {} };
 
