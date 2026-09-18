@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ChevronDown, ChevronRight, Save, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Save, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import buttonStyles from "@/components/ui/Button.module.css";
@@ -72,6 +72,7 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
   const [fieldErrors, setFieldErrors] = useState<PatientProfileFieldErrors>({ metrics: {} });
   const [openGroups, setOpenGroups] = useState<MetricGroup[]>(["vitals"]);
   const closeTimerRef = useRef<number | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
 
   const groupedMetrics = useMemo(() => {
     const groups = new Map<MetricGroup, Array<{ metric: HealthMetric; index: number }>>();
@@ -97,7 +98,9 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
         const response = await fetch("/api/health-profile", { cache: "no-store" });
         if (!response.ok) {
           const data = await response.json().catch(() => null);
-          throw new Error(data?.error?.message ?? "โหลดข้อมูลสุขภาพไม่สำเร็จ");
+          throw new Error(
+            data?.error?.message ?? "ไม่สามารถโหลดข้อมูลสุขภาพได้ กรุณาลองอีกครั้ง"
+          );
         }
 
         const data = (await response.json()) as PatientProfileForm;
@@ -124,7 +127,11 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
         }
       } catch (loadError) {
         if (isMounted) {
-          setError(loadError instanceof Error ? loadError.message : "โหลดข้อมูลสุขภาพไม่สำเร็จ");
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "ไม่สามารถโหลดข้อมูลสุขภาพได้ กรุณาลองอีกครั้ง"
+          );
         }
       } finally {
         if (isMounted) {
@@ -169,6 +176,35 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
 
       return { ...current, healthMetrics };
     });
+
+    setFieldErrors((current) => {
+      if (!current.metrics[index]) {
+        return current;
+      }
+
+      const metrics = { ...current.metrics };
+      delete metrics[index];
+      return { ...current, metrics };
+    });
+    setError(null);
+  }
+
+  function focusFirstInvalidField() {
+    // The invalid metric's group may have just been expanded, so wait for that
+    // input to exist before scrolling it into view.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const firstInvalidField =
+          panelRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+
+        if (!firstInvalidField) {
+          return;
+        }
+
+        firstInvalidField.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstInvalidField.focus({ preventScroll: true });
+      });
+    });
   }
 
   function toggleGroup(group: MetricGroup) {
@@ -191,28 +227,33 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
         .filter((group): group is MetricGroup => Boolean(group));
 
       setOpenGroups((current) => [...new Set([...current, ...invalidGroups])]);
-      setError("กรุณาตรวจช่องที่ถูกไฮไลต์สีแดงก่อนบันทึก");
+      setError("กรุณาตรวจสอบช่องที่ถูกไฮไลต์สีแดงแล้วลองอีกครั้ง");
+      focusFirstInvalidField();
       return;
     }
 
     try {
       const saved = await onSave(profile);
       setProfile(saved);
-      setStatus("บันทึกข้อมูลสุขภาพแล้ว");
+      setStatus("บันทึกข้อมูลสุขภาพเรียบร้อยแล้ว");
       closeTimerRef.current = window.setTimeout(onClose, 1300);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "บันทึกข้อมูลสุขภาพไม่สำเร็จ");
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "ไม่สามารถบันทึกข้อมูลสุขภาพได้ กรุณาลองอีกครั้ง"
+      );
     }
   }
 
   const disabled = isBusy || isLoading || Boolean(status);
 
   return (
-    <section className={styles.panel} aria-label="Health profile form">
+    <section className={styles.panel} aria-label="Health profile form" ref={panelRef}>
       <div className={styles.header}>
         <div>
           <h2>ข้อมูลสุขภาพ</h2>
-          <p>กรอกหรือแก้ข้อมูลที่ต้องใช้ประกอบการวิเคราะห์</p>
+          <p>กรอกหรือแก้ไขข้อมูลที่ใช้ประกอบการวิเคราะห์สุขภาพ</p>
         </div>
         <button
           aria-label="Close health profile"
@@ -226,7 +267,7 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
         </button>
       </div>
 
-      {isLoading ? <p className={styles.statusText}>กำลังโหลดข้อมูลเดิม...</p> : null}
+      {isLoading ? <p className={styles.statusText}>กำลังโหลดข้อมูลสุขภาพ...</p> : null}
 
       <div className={styles.section}>
         <h3>ข้อมูลส่วนตัว</h3>
@@ -234,13 +275,17 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
           <label className={fieldErrors.sex ? styles.invalidField : ""}>
             เพศ
             <select
+              aria-invalid={Boolean(fieldErrors.sex)}
+              aria-required="true"
               value={profile.sex ?? ""}
-              onChange={(event) =>
+              onChange={(event) => {
                 setProfile((current) => ({
                   ...current,
                   sex: event.target.value || null
-                }))
-              }
+                }));
+                setFieldErrors((current) => ({ ...current, sex: undefined }));
+                setError(null);
+              }}
               disabled={disabled}
             >
               <option value="">ไม่ระบุ</option>
@@ -253,16 +298,20 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
           <label className={fieldErrors.age ? styles.invalidField : ""}>
             อายุ
             <input
+              aria-invalid={Boolean(fieldErrors.age)}
+              aria-required="true"
               type="number"
               min="0"
               max="130"
               value={profile.age ?? ""}
-              onChange={(event) =>
+              onChange={(event) => {
                 setProfile((current) => ({
                   ...current,
                   age: event.target.value ? Number(event.target.value) : null
-                }))
-              }
+                }));
+                setFieldErrors((current) => ({ ...current, age: undefined }));
+                setError(null);
+              }}
               disabled={disabled}
             />
             {fieldErrors.age ? <span>{fieldErrors.age}</span> : null}
@@ -312,6 +361,7 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
                         <label className={fieldErrors.metrics[index]?.value ? styles.invalidField : ""}>
                           <input
                             aria-label={metric.label}
+                            aria-invalid={Boolean(fieldErrors.metrics[index]?.value)}
                             inputMode="decimal"
                             value={metric.value}
                             onChange={(event) => updateMetric(index, { value: event.target.value })}
@@ -394,7 +444,19 @@ export function HealthProfilePanel({ isBusy, seedMetrics = [], onClose, onSave }
           </div>
         </div>
       ) : null}
-      {error ? <p className={styles.errorText}>{error}</p> : null}
+      {error ? (
+        <div className={styles.errorToast} role="alert" aria-live="assertive">
+          <AlertCircle size={20} aria-hidden="true" />
+          <span>{error}</span>
+          <button
+            aria-label="ปิดข้อความแจ้งเตือน"
+            onClick={() => setError(null)}
+            type="button"
+          >
+            <X size={17} aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
