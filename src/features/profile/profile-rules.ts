@@ -37,9 +37,9 @@ export function validatePatientProfile(profile: PatientProfileForm): PatientProf
   }
 
   if (profile.age === null || profile.age === undefined || Number.isNaN(profile.age)) {
-    errors.age = "กรุณากรอกอายุ";
+    errors.age = "กรุณาระบุอายุ";
   } else if (profile.age < 0 || profile.age > 130) {
-    errors.age = "อายุต้องอยู่ระหว่าง 0-130";
+    errors.age = "กรุณาระบุอายุระหว่าง 0–130 ปี";
   }
 
   for (const [index, metric] of profile.healthMetrics.entries()) {
@@ -52,7 +52,7 @@ export function validatePatientProfile(profile: PatientProfileForm): PatientProf
     if (!Number.isFinite(numericValue)) {
       errors.metrics[index] = {
         ...errors.metrics[index],
-        value: "กรุณากรอกเป็นตัวเลข"
+        value: "กรุณาระบุค่าเป็นตัวเลข"
       };
       continue;
     }
@@ -62,7 +62,7 @@ export function validatePatientProfile(profile: PatientProfileForm): PatientProf
     if (definition && (numericValue < definition.min || numericValue > definition.max)) {
       errors.metrics[index] = {
         ...errors.metrics[index],
-        value: `ค่าควรอยู่ระหว่าง ${definition.min}-${definition.max}`
+        value: `กรุณาระบุค่าระหว่าง ${definition.min}–${definition.max}`
       };
     }
   }
@@ -78,14 +78,14 @@ export function validatePatientProfile(profile: PatientProfileForm): PatientProf
     if (!hasSystolic && systolicIndex >= 0) {
       errors.metrics[systolicIndex] = {
         ...errors.metrics[systolicIndex],
-        value: "กรอกความดันตัวบนด้วย"
+        value: "กรุณาระบุค่าความดันตัวบน"
       };
     }
 
     if (!hasDiastolic && diastolicIndex >= 0) {
       errors.metrics[diastolicIndex] = {
         ...errors.metrics[diastolicIndex],
-        value: "กรอกความดันตัวล่างด้วย"
+        value: "กรุณาระบุค่าความดันตัวล่าง"
       };
     }
   }

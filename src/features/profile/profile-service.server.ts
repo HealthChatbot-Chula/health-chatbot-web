@@ -233,7 +233,7 @@ export async function updatePatientProfileForUser(
   const validationErrors = validatePatientProfile(input);
 
   if (hasPatientProfileErrors(validationErrors)) {
-    throw new AppError("กรุณาตรวจข้อมูลสุขภาพให้ครบก่อนบันทึก", 400);
+    throw new AppError("กรุณาตรวจสอบข้อมูลสุขภาพแล้วลองอีกครั้ง", 400);
   }
 
   const profile = await upsertPatientProfile({
