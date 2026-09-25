@@ -5,6 +5,7 @@ import type { ChatMessage, HealthState, QuickReplyOption } from "@/features/chat
 
 type CreateCompletionInput = {
   conversationId: string;
+  chatSessionId: string;
   userId: string;
   messages: ChatMessage[];
   healthState?: HealthState;
@@ -63,6 +64,7 @@ export async function createHealthChatCompletion(input: CreateCompletionInput) {
       })),
       user: input.userId,
       conversation_id: input.conversationId,
+      session_id: input.chatSessionId,
       health_state: input.healthState,
       stream: false
     })

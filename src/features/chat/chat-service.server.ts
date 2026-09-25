@@ -11,6 +11,7 @@ import { createHealthChatCompletion } from "@/server/clients/health-backend.clie
 import {
   createConversationMessage,
   createUserConversation,
+  getOrCreateActiveChatSession,
   getConversationHealthState,
   getLatestUserConversation,
   getUserConversation,
@@ -179,6 +180,7 @@ async function persistHealthState(
 
 async function createAssistantReply(input: {
   conversationId: string;
+  chatSessionId: string;
   userId: string;
   replyToMessageId: string;
   healthStateOverride?: HealthState;
@@ -193,6 +195,7 @@ async function createAssistantReply(input: {
   );
   const assistantResult = await createHealthChatCompletion({
     conversationId: input.conversationId,
+    chatSessionId: input.chatSessionId,
     userId: input.userId,
     healthState,
     messages: history.map((message) => ({
@@ -205,6 +208,7 @@ async function createAssistantReply(input: {
 
   const assistantMessage = await createConversationMessage({
     conversationId: input.conversationId,
+    chatSessionId: input.chatSessionId,
     replyToMessageId: input.replyToMessageId,
     role: "assistant",
     content: assistantResult.content,
@@ -320,14 +324,21 @@ export async function sendMessageToConversation(input: {
     throw new AppError("Conversation not found", 404);
   }
 
+  const chatSession = await getOrCreateActiveChatSession(
+    input.userId,
+    conversation.id
+  );
+
   const userMessage = await createConversationMessage({
     conversationId: conversation.id,
+    chatSessionId: chatSession.id,
     role: "user",
     content: input.message
   });
 
   const assistantReply = await createAssistantReply({
     conversationId: conversation.id,
+    chatSessionId: chatSession.id,
     userId: input.userId,
     replyToMessageId: userMessage.id
   });
@@ -379,6 +390,11 @@ export async function sendConfirmedLabReportToConversation(input: {
     throw new AppError("Conversation not found", 404);
   }
 
+  const chatSession = await getOrCreateActiveChatSession(
+    input.userId,
+    conversation.id
+  );
+
   const structuredLab = {
     labReportId: input.labReport.id,
     measuredAt: input.labReport.measuredAt?.toISOString() ?? null,
@@ -401,6 +417,7 @@ export async function sendConfirmedLabReportToConversation(input: {
 
   const userMessage = await createConversationMessage({
     conversationId: conversation.id,
+    chatSessionId: chatSession.id,
     role: "user",
     content: userContent,
     metadata: {
@@ -412,6 +429,7 @@ export async function sendConfirmedLabReportToConversation(input: {
 
   const assistantReply = await createAssistantReply({
     conversationId: conversation.id,
+    chatSessionId: chatSession.id,
     userId: input.userId,
     replyToMessageId: userMessage.id,
     healthStateOverride: labReportToHealthState(input.labReport)

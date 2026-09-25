@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 
+import {
+  chatSessionEndedAt,
+  isChatSessionActive
+} from "@/features/chat/chat-session";
 import { prisma } from "@/server/db";
 
 export async function listUserConversations(userId: string) {
@@ -55,6 +59,7 @@ export async function createUserConversation(userId: string, title = "Health cha
 
 export async function createConversationMessage(input: {
   conversationId: string;
+  chatSessionId: string;
   replyToMessageId?: string;
   role: "user" | "assistant" | "system";
   content: string;
@@ -62,6 +67,49 @@ export async function createConversationMessage(input: {
 }) {
   return prisma.message.create({
     data: input
+  });
+}
+
+export async function getOrCreateActiveChatSession(
+  userId: string,
+  conversationId: string,
+  now = new Date()
+) {
+  return prisma.$transaction(async (transaction) => {
+    const latestSession = await transaction.chatSession.findFirst({
+      where: {
+        userId,
+        conversationId
+      },
+      orderBy: [{ lastActiveAt: "desc" }, { createdAt: "desc" }]
+    });
+
+    if (
+      latestSession &&
+      latestSession.endedAt === null &&
+      isChatSessionActive(latestSession.lastActiveAt, now)
+    ) {
+      return transaction.chatSession.update({
+        where: { id: latestSession.id },
+        data: { lastActiveAt: now }
+      });
+    }
+
+    if (latestSession?.endedAt === null) {
+      await transaction.chatSession.update({
+        where: { id: latestSession.id },
+        data: { endedAt: chatSessionEndedAt(latestSession.lastActiveAt) }
+      });
+    }
+
+    return transaction.chatSession.create({
+      data: {
+        userId,
+        conversationId,
+        startedAt: now,
+        lastActiveAt: now
+      }
+    });
   });
 }
 
