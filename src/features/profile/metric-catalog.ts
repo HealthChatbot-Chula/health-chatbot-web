@@ -8,7 +8,7 @@ export type MetricDefinition = {
   label: string;
   unit: string | null;
   group: MetricGroup;
-  /** Plausible-range guard, not a clinical reference range. */
+  /** Storage bounds agreed with the clinician (0–10000, % fields 0–100), not a clinical reference range. */
   min: number;
   max: number;
 };
@@ -22,33 +22,33 @@ export const metricGroupLabels: Record<MetricGroup, string> = {
 };
 
 export const metricCatalog: MetricDefinition[] = [
-  { id: "SBP", label: "ความดันตัวบน (SBP)", unit: "มม.ปรอท", group: "vitals", min: 50, max: 260 },
-  { id: "DBP", label: "ความดันตัวล่าง (DBP)", unit: "มม.ปรอท", group: "vitals", min: 30, max: 180 },
-  { id: "HeartRate", label: "ชีพจร (Heart Rate)", unit: "ครั้ง/นาที", group: "vitals", min: 25, max: 220 },
-  { id: "Weight", label: "น้ำหนัก (Weight)", unit: "กก.", group: "vitals", min: 10, max: 400 },
-  { id: "Height", label: "ส่วนสูง (Height)", unit: "ซม.", group: "vitals", min: 50, max: 250 },
-  { id: "BMI", label: "ดัชนีมวลกาย (BMI)", unit: "กก./ม.²", group: "vitals", min: 8, max: 100 },
-  { id: "WaistCircumference", label: "รอบเอว (Waist)", unit: "ซม.", group: "vitals", min: 30, max: 250 },
+  { id: "SBP", label: "ความดันตัวบน (SBP)", unit: "มม.ปรอท", group: "vitals", min: 0, max: 10000 },
+  { id: "DBP", label: "ความดันตัวล่าง (DBP)", unit: "มม.ปรอท", group: "vitals", min: 0, max: 10000 },
+  { id: "HeartRate", label: "ชีพจร (Heart Rate)", unit: "ครั้ง/นาที", group: "vitals", min: 0, max: 10000 },
+  { id: "Weight", label: "น้ำหนัก (Weight)", unit: "กก.", group: "vitals", min: 0, max: 10000 },
+  { id: "Height", label: "ส่วนสูง (Height)", unit: "ซม.", group: "vitals", min: 0, max: 10000 },
+  { id: "BMI", label: "ดัชนีมวลกาย (BMI)", unit: "กก./ม.²", group: "vitals", min: 0, max: 10000 },
+  { id: "WaistCircumference", label: "รอบเอว (Waist)", unit: "ซม.", group: "vitals", min: 0, max: 10000 },
 
-  { id: "FBS", label: "น้ำตาลในเลือด (FBS)", unit: "มก./ดล.", group: "glycemic", min: 20, max: 900 },
-  { id: "HbA1c", label: "น้ำตาลสะสม (HbA1c)", unit: "%", group: "glycemic", min: 3, max: 20 },
+  { id: "FBS", label: "น้ำตาลในเลือด (FBS)", unit: "มก./ดล.", group: "glycemic", min: 0, max: 10000 },
+  { id: "HbA1c", label: "น้ำตาลสะสม (HbA1c)", unit: "%", group: "glycemic", min: 0, max: 100 },
 
-  { id: "Total Cholesterol", label: "คอเลสเตอรอลรวม (Total Cholesterol)", unit: "มก./ดล.", group: "lipid", min: 50, max: 600 },
-  { id: "LDL", label: "แอล ดี แอล คอเลสเตอรอล (LDL-C)", unit: "มก./ดล.", group: "lipid", min: 10, max: 500 },
-  { id: "HDL", label: "เอช ดี แอล คอเลสเตอรอล (HDL-C)", unit: "มก./ดล.", group: "lipid", min: 5, max: 150 },
-  { id: "Triglycerides", label: "ไตรกลีเซอไรด์ (Triglycerides)", unit: "มก./ดล.", group: "lipid", min: 20, max: 2000 },
+  { id: "Total Cholesterol", label: "คอเลสเตอรอลรวม (Total Cholesterol)", unit: "มก./ดล.", group: "lipid", min: 0, max: 10000 },
+  { id: "LDL", label: "แอล ดี แอล คอเลสเตอรอล (LDL-C)", unit: "มก./ดล.", group: "lipid", min: 0, max: 10000 },
+  { id: "HDL", label: "เอช ดี แอล คอเลสเตอรอล (HDL-C)", unit: "มก./ดล.", group: "lipid", min: 0, max: 10000 },
+  { id: "Triglycerides", label: "ไตรกลีเซอไรด์ (Triglycerides)", unit: "มก./ดล.", group: "lipid", min: 0, max: 10000 },
 
-  { id: "Hemoglobin", label: "ฮีโมโกลบิน (Hemoglobin)", unit: "ก./ดล.", group: "kidney", min: 3, max: 25 },
-  { id: "eGFR", label: "อัตราการกรองของไต (eGFR)", unit: "มล./นาที/1.73 ม.²", group: "kidney", min: 1, max: 200 },
-  { id: "Creatinine", label: "ครีแอตินีน (Creatinine)", unit: "มก./ดล.", group: "kidney", min: 0.1, max: 25 },
-  { id: "BUN", label: "ยูเรียไนโตรเจนในเลือด (BUN)", unit: "มก./ดล.", group: "kidney", min: 1, max: 200 },
+  { id: "Hemoglobin", label: "ฮีโมโกลบิน (Hemoglobin)", unit: "ก./ดล.", group: "kidney", min: 0, max: 10000 },
+  { id: "eGFR", label: "อัตราการกรองของไต (eGFR)", unit: "มล./นาที/1.73 ม.²", group: "kidney", min: 0, max: 10000 },
+  { id: "Creatinine", label: "ครีแอตินีน (Creatinine)", unit: "มก./ดล.", group: "kidney", min: 0, max: 10000 },
+  { id: "BUN", label: "ยูเรียไนโตรเจนในเลือด (BUN)", unit: "มก./ดล.", group: "kidney", min: 0, max: 10000 },
   { id: "UACR", label: "อัลบูมินต่อครีแอตินีน (UACR)", unit: "มก./ก.", group: "kidney", min: 0, max: 10000 },
-  { id: "Potassium", label: "โพแทสเซียม (Potassium)", unit: "มิลลิโมล/ล.", group: "kidney", min: 1, max: 10 },
-  { id: "Calcium", label: "แคลเซียม (Calcium)", unit: "มก./ดล.", group: "kidney", min: 3, max: 20 },
-  { id: "Phosphate", label: "ฟอสเฟต (Phosphate)", unit: "มก./ดล.", group: "kidney", min: 0.5, max: 15 },
+  { id: "Potassium", label: "โพแทสเซียม (Potassium)", unit: "มิลลิโมล/ล.", group: "kidney", min: 0, max: 10000 },
+  { id: "Calcium", label: "แคลเซียม (Calcium)", unit: "มก./ดล.", group: "kidney", min: 0, max: 10000 },
+  { id: "Phosphate", label: "ฟอสเฟต (Phosphate)", unit: "มก./ดล.", group: "kidney", min: 0, max: 10000 },
 
-  { id: "AST", label: "เอนไซม์ตับ (AST)", unit: "ยูนิต/ล.", group: "liver", min: 1, max: 5000 },
-  { id: "ALT", label: "เอนไซม์ตับ (ALT)", unit: "ยูนิต/ล.", group: "liver", min: 1, max: 5000 }
+  { id: "AST", label: "เอนไซม์ตับ (AST)", unit: "ยูนิต/ล.", group: "liver", min: 0, max: 10000 },
+  { id: "ALT", label: "เอนไซม์ตับ (ALT)", unit: "ยูนิต/ล.", group: "liver", min: 0, max: 10000 }
 ];
 
 const catalogById = new Map(metricCatalog.map((metric) => [metric.id, metric]));
@@ -66,8 +66,9 @@ export function findMetricDefinition(id: string) {
 
 /**
  * Guards a value reported by the chat agent before it reaches the profile.
- * Returns null for unknown ids, non-numbers, and physiologically impossible
- * readings, so a model slip cannot overwrite a real measurement.
+ * Returns null for unknown ids, non-numbers, and values outside the field's
+ * bounds, so a model slip cannot overwrite a real measurement. Values are
+ * stored with at most two decimal places.
  */
 export function acceptMetricValue(id: string, raw: unknown): HealthMetric | null {
   const definition = catalogById.get(id);
@@ -75,11 +76,12 @@ export function acceptMetricValue(id: string, raw: unknown): HealthMetric | null
     return null;
   }
 
-  if (typeof raw !== "number" && typeof raw !== "string") {
+  // Number("") is 0, which the 0 lower bound would now accept.
+  if (typeof raw !== "number" && (typeof raw !== "string" || raw.trim() === "")) {
     return null;
   }
 
-  const value = Number(raw);
+  const value = Math.round(Number(raw) * 100) / 100;
   if (!Number.isFinite(value) || value < definition.min || value > definition.max) {
     return null;
   }

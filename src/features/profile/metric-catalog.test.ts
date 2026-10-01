@@ -41,13 +41,22 @@ test("rejects ids outside the catalog", () => {
   assert.equal(acceptMetricValue("Astrology", 1), null);
 });
 
-test("rejects impossible readings rather than overwriting a real one", () => {
-  assert.equal(acceptMetricValue("SBP", 900), null);
-  assert.equal(acceptMetricValue("HbA1c", 0), null);
+test("accepts 0–10000, and 0–100 for percent fields", () => {
+  assert.equal(acceptMetricValue("ALT", 8000)?.value, "8000");
+  assert.equal(acceptMetricValue("UACR", 0)?.value, "0");
+  assert.equal(acceptMetricValue("SBP", 10001), null);
   assert.equal(acceptMetricValue("eGFR", -5), null);
+  assert.equal(acceptMetricValue("HbA1c", 61.5)?.value, "61.5");
+  assert.equal(acceptMetricValue("HbA1c", 101), null);
+});
+
+test("rounds to two decimal places", () => {
+  assert.equal(acceptMetricValue("Creatinine", 1.234)?.value, "1.23");
+  assert.equal(acceptMetricValue("Creatinine", "1.236")?.value, "1.24");
 });
 
 test("rejects non-numeric payloads", () => {
+  assert.equal(acceptMetricValue("LDL", ""), null);
   assert.equal(acceptMetricValue("LDL", "สูงมาก"), null);
   assert.equal(acceptMetricValue("LDL", null), null);
   assert.equal(acceptMetricValue("LDL", { value: 1 }), null);

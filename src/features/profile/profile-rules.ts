@@ -57,6 +57,14 @@ export function validatePatientProfile(profile: PatientProfileForm): PatientProf
       continue;
     }
 
+    if (/\.\d{3,}$/.test(metric.value.trim())) {
+      errors.metrics[index] = {
+        ...errors.metrics[index],
+        value: "กรุณาระบุทศนิยมไม่เกิน 2 ตำแหน่ง"
+      };
+      continue;
+    }
+
     const definition = metric.id ? findMetricDefinition(metric.id) : undefined;
 
     if (definition && (numericValue < definition.min || numericValue > definition.max)) {
